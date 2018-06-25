@@ -39,6 +39,7 @@
 #define DEFAULT_CULMINATION_TIME    -60
 #define DEFAULT_MIN_ALTITUDE        15
 #define DEFAULT_MIN_MOON_SEPARATION 0
+#define DEFAULT_SECS_SLEEP_ABORTED  30
 
 namespace Ekos
 {
@@ -187,7 +188,7 @@ void Scheduler::watchJobChanges(bool enable)
         connect(fitsEdit, SIGNAL(editingFinished()), this, SLOT(setDirty()));
         connect(sequenceEdit, SIGNAL(editingFinished()), this, SLOT(setDirty()));
         connect(startupScript, SIGNAL(editingFinished()), this, SLOT(setDirty()));
-        connect(shutdownScript, SIGNAL(editingFinished()), this, SLOT(setDirty()));        
+        connect(shutdownScript, SIGNAL(editingFinished()), this, SLOT(setDirty()));
         connect(schedulerProfileCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(setDirty()));
 
         connect(stepsButtonGroup, SIGNAL(buttonToggled(int,bool)), this, SLOT(setDirty()));
@@ -1116,8 +1117,9 @@ void Scheduler::evaluateJobs()
 
             /* If job is aborted, reset it for evaluation */
             case SchedulerJob::JOB_ABORTED:
-                job->setState(SchedulerJob::JOB_EVALUATION);
-                break;
+                // aborted jobs will be reset only if all others failed
+                // job->setState(SchedulerJob::JOB_EVALUATION);
+                continue;
 
             /* If job is scheduled, quick-check startup and bypass evaluation if in future */
             case SchedulerJob::JOB_SCHEDULED:
@@ -1406,8 +1408,30 @@ void Scheduler::evaluateJobs()
         if (invalidJobs > 0)
             appendLogText(i18np("%1 job is invalid.", "%1 jobs are invalid.", invalidJobs));
 
-        if (abortedJobs > 0)
-            appendLogText(i18np("%1 job aborted.", "%1 jobs aborted", abortedJobs));
+        if (abortedJobs > 0) {
+            appendLogText(i18np("%1 job aborted.", "%1 jobs aborted - resetting", abortedJobs));
+            guideFailureCount   = 0;
+            focusFailureCount   = 0;
+            alignFailureCount   = 0;
+            captureFailureCount = 0;
+
+            foreach (SchedulerJob *job, jobs) {
+                if (job->getState() == SchedulerJob::JOB_ABORTED) {
+                    job->reset();
+                }
+            }
+            setCurrentJob(nullptr);
+            jobStatus->setText(i18n("Sleeping for %1 secs...", DEFAULT_SECS_SLEEP_ABORTED));
+            queueTable->clearSelection();
+
+            sleepLabel->show();
+            sleepTimer.setInterval(( DEFAULT_SECS_SLEEP_ABORTED * 1000));
+            sleepTimer.start();
+            schedulerTimer.stop();
+
+            // skip the rest
+            return;
+        }
 
         if (completedJobs > 0)
             appendLogText(i18np("%1 job completed.", "%1 jobs completed.", completedJobs));
@@ -1422,7 +1446,7 @@ void Scheduler::evaluateJobs()
 
     /* Remove complete and invalid jobs that could have appeared during the last evaluation */
     sortedJobs.erase(std::remove_if(sortedJobs.begin(), sortedJobs.end(),[](SchedulerJob* job)
-    { return SchedulerJob::JOB_ABORTED < job->getState(); }), sortedJobs.end());
+    { return SchedulerJob::JOB_ABORTED <= job->getState(); }), sortedJobs.end());
 
     /* If there are no jobs left to run in the filtered list, shutdown scheduler and stop evaluation now */
     if (sortedJobs.isEmpty())
@@ -2950,7 +2974,7 @@ void Scheduler::checkJobStage()
             else if (slewStatus.value() == IPS_ALERT)
             {
                 appendLogText(i18n("Warning! Job '%1' slew failed, marking terminated due to errors.", currentJob->getName()));
-                currentJob->setState(SchedulerJob::JOB_ERROR);
+                currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                 findNextJob();
             }
@@ -2964,7 +2988,7 @@ void Scheduler::checkJobStage()
         }
         break;
 
-        case SchedulerJob::STAGE_FOCUSING:        
+        case SchedulerJob::STAGE_FOCUSING:
         {
             QDBusReply<int> focusReply = focusInterface->call(QDBus::AutoDetect, "getStatus");
 
@@ -3006,7 +3030,7 @@ void Scheduler::checkJobStage()
                 else
                 {
                     appendLogText(i18n("Warning! Job '%1' focusing procedure failed, marking terminated due to errors.", currentJob->getName()));
-                    currentJob->setState(SchedulerJob::JOB_ERROR);
+                    currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                     findNextJob();
                 }
@@ -3101,7 +3125,7 @@ void Scheduler::checkJobStage()
             else if (slewStatus.value() == IPS_ALERT)
             {
                 appendLogText(i18n("Warning! Job '%1' repositioning failed, marking terminated due to errors.", currentJob->getName()));
-                currentJob->setState(SchedulerJob::JOB_ERROR);
+                currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                 findNextJob();
             }
@@ -3155,7 +3179,7 @@ void Scheduler::checkJobStage()
                 else
                 {
                     appendLogText(i18n("Warning! Job '%1' guiding procedure failed, marking terminated due to errors.", currentJob->getName()));
-                    currentJob->setState(SchedulerJob::JOB_ERROR);
+                    currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                     findNextJob();
                 }
@@ -3888,7 +3912,7 @@ void Scheduler::startFocusing()
     {
         qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' startFocus request received DBUS error: %2").arg(currentJob->getName(), reply.errorMessage());
         return;
-    }    
+    }
 
     /*if (currentJob->getStage() == SchedulerJob::STAGE_RESLEWING_COMPLETE ||
         currentJob->getStage() == SchedulerJob::STAGE_POSTALIGN_FOCUSING)
@@ -4334,7 +4358,7 @@ bool Scheduler::estimateJobTime(SchedulerJob *schedJob)
              *
              * Sequence jobs capture to a storage folder, and are given a count of captures to store at that location.
              * The tricky part is to make sure the repeat count of the scheduler job is properly transferred to each sequence job.
-             * 
+             *
              * For instance, a scheduler job repeated three times must execute the full list of sequence jobs three times, thus
              * has to tell each sequence job it misses all captures, three times. It cannot tell the sequence job three captures are
              * missing, first because that's not how the sequence job is designed (completed count, not required count), and second
@@ -4346,7 +4370,7 @@ bool Scheduler::estimateJobTime(SchedulerJob *schedJob)
              * For instance, consider a RGBL sequence of single captures. The map will store completed captures for R, G, B and L storages.
              * If R and G have 1 file each, and B and L have no files, map[storage(R)] = map[storage(G)] = 1 and map[storage(B)] = map[storage(L)] = 0.
              * When that scheduler job executes, only B and L captures will be processed.
-             * 
+             *
              * In the case of a RGBLRGB sequence of single captures, the second R, G and B map items will count one less capture than what is really in storage.
              * If R and G have 1 file each, and B and L have no files, map[storage(R1)] = map[storage(B1)] = 1, and all others will be 0.
              * When that scheduler job executes, B1, L, R2, G2 and B2 will be processed.
