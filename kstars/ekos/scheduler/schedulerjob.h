@@ -10,6 +10,8 @@
 #pragma once
 
 #include "skypoint.h"
+#include "scheduler.h"
+#include "ekos/capture/sequencejob.h"
 
 #include <QUrl>
 #include <QMap>
@@ -19,6 +21,8 @@ class QLabel;
 
 class dms;
 
+namespace Ekos
+{
 class SchedulerJob
 {
   public:
@@ -318,6 +322,22 @@ class SchedulerJob
      */
     void reset();
 
+    /**
+         * @brief estimateJobTime Estimates the time the job takes to complete based on the sequence file and what modules to utilize during the observation run.
+         * @param scheduler Scheduler managing this job
+         * @return Estimated time in seconds.
+         */
+    bool estimateJobTime(Scheduler *scheduler);
+
+    bool updateCompletedJobsCount(Scheduler *scheduler);
+
+    int getCompletedFiles(const QString &path, const QString &seqPrefix);
+
+    bool loadSequenceQueue(Scheduler *scheduler, const QString &fileURL,
+                           QList<SequenceJob *> &jobs, bool &hasAutoFocus);
+
+    SequenceJob *processJobInfo(XMLEle *root);
+
     /** @brief Determining whether a SchedulerJob is a duplicate of another.
      * @param a_job is the other SchedulerJob to test duplication against.
      * @return True if objects are different, but name and sequence file are identical, else false.
@@ -411,4 +431,7 @@ private:
     bool lightFramesRequired { false };
 
     QMap<QString, uint16_t> capturedFramesMap;
+    QMap<QString,uint16_t> capturedFramesCount;
 };
+
+}

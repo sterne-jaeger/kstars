@@ -28,12 +28,12 @@ class QProgressIndicator;
 
 class GeoLocation;
 class KSMoon;
-class SchedulerJob;
 class SkyObject;
 
 namespace Ekos
 {
 class SequenceJob;
+class SchedulerJob;
 
 /**
  * @brief The Ekos scheduler is a simple scheduler class to orchestrate automated multi object observation jobs.
@@ -527,13 +527,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
     void updatePreDawn();
 
     /**
-         * @brief estimateJobTime Estimates the time the job takes to complete based on the sequence file and what modules to utilize during the observation run.
-         * @param job target job
-         * @return Estimated time in seconds.
-         */
-    bool estimateJobTime(SchedulerJob *schedJob);
-
-    /**
          * @brief createJobSequence Creates a job sequence for the mosaic tool given the prefix and output dir. The currently selected sequence file is modified
          * and a new version given the supplied parameters are saved to the output directory
          * @param prefix Prefix to set for the job sequence
@@ -554,11 +547,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
     bool isWeatherOK(SchedulerJob *job);
 
     void updateCompletedJobsCount();
-
-    SequenceJob *processJobInfo(XMLEle *root, SchedulerJob *schedJob);
-    bool loadSequenceQueue(const QString &fileURL, SchedulerJob *schedJob, QList<SequenceJob *> &jobs,
-                           bool &hasAutoFocus);
-    int getCompletedFiles(const QString &path, const QString &seqPrefix);
 
     Ekos::Scheduler *ui { nullptr };
     //DBus interfaces
@@ -651,7 +639,5 @@ class Scheduler : public QWidget, public Ui::Scheduler
     QTime currentOperationTime;
 
     QUrl dirPath;
-
-    QMap<QString,uint16_t> capturedFramesCount;
 };
 }
