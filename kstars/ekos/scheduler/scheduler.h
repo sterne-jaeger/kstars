@@ -203,6 +203,9 @@ class Scheduler : public QWidget, public Ui::Scheduler
          */
     Q_SCRIPTABLE void resetAllJobs();
 
+    /* FIXME: this should be private. Resolve back loop from SchedulerJob */
+    int16_t getDarkSkyScore(const QDateTime &observationDateTime);
+
     /** @}*/
 
   protected slots:
@@ -362,7 +365,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
 
     void executeScript(const QString &filename);
 
-    int16_t getDarkSkyScore(const QDateTime &observationDateTime);
 
     /**
          * @brief getAltitudeScore Get the altitude score of an object. The higher the better
@@ -380,6 +382,7 @@ class Scheduler : public QWidget, public Ui::Scheduler
          */
     int16_t getMoonSeparationScore(SchedulerJob *job, QDateTime when);
 
+
     /**
          * @brief calculateJobScore Calculate job dark sky score, altitude score, and moon separation scores and returns the sum.
          * @param job job to evaluate
@@ -393,22 +396,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
          * @return If weather condition OK, return 0, if warning return -500, if alert return -1000
          */
     int16_t getWeatherScore();
-
-    /**
-         * @brief calculateAltitudeTime calculate the altitude time given the minimum altitude given.
-         * @param job active target
-         * @param minAltitude minimum altitude required
-         * @param minMoonAngle minimum separation from the moon. -1 to ignore.
-         * @return True if found a time in the night where the object is at or above the minimum altitude, false otherise.
-         */
-    bool calculateAltitudeTime(SchedulerJob *job, double minAltitude, double minMoonAngle = -1);
-
-    /**
-         * @brief calculateCulmination find culmination time adjust for the job offset
-         * @param job Active job
-         * @return True if culmination time adjust for offset is a valid time in the night
-         */
-    bool calculateCulmination(SchedulerJob *job);
 
     /**
          * @brief calculateDawnDusk Get dawn and dusk times for today

@@ -10,6 +10,7 @@
 #include "schedulerjob.h"
 
 #include "dms.h"
+#include "ksalmanac.h"
 #include "kstarsdata.h"
 #include "scheduler.h"
 #include "Options.h"
@@ -511,14 +512,14 @@ void SchedulerJob::reset()
     repeatsRemaining = repeatsRequired;
 }
 
-bool SchedulerJob::estimateJobTime(Scheduler *scheduler)
+bool SchedulerJob::estimateJobTime()
 {
     /* updateCompletedJobsCount(); */
 
     QList<SequenceJob *> seqJobs;
     bool hasAutoFocus = false;
 
-    if (loadSequenceQueue(scheduler, getSequenceFile().toLocalFile(), seqJobs, hasAutoFocus) == false)
+    if (loadSequenceQueue(getSequenceFile().toLocalFile(), seqJobs, hasAutoFocus) == false)
         return false;
 
     setInSequenceFocus(hasAutoFocus);
@@ -709,7 +710,7 @@ bool SchedulerJob::estimateJobTime(Scheduler *scheduler)
     if (getCompletionCondition() == SchedulerJob::FINISH_LOOP)
     {
         // We can't know estimated time if it is looping indefinitely
-        scheduler->appendLogText(i18n("Warning! Job '%1' will be looping until Scheduler is stopped manually.", getName()));
+        qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' will be looping until Scheduler is stopped manually.").arg(getName());
         setEstimatedTime(-2);
     }
     // If we know startup and finish times, we can estimate time right away
@@ -717,13 +718,13 @@ bool SchedulerJob::estimateJobTime(Scheduler *scheduler)
         getCompletionCondition() == SchedulerJob::FINISH_AT)
     {
         qint64 const diff = getStartupTime().secsTo(getCompletionTime());
-        scheduler->appendLogText(i18n("Job '%1' will run for %2.", getName(), dms(diff / 3600.0f).toHMSString()));
+        qCInfo(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' will run for %2.").arg(getName(), dms(diff / 3600.0f).toHMSString());
         setEstimatedTime(diff);
     }
     // Rely on the estimated imaging time to determine whether this job is complete or not - this makes the estimated time null
     else if (totalImagingTime <= 0)
     {
-        scheduler->appendLogText(i18n("Job '%1' will not run, complete with %2/%3 captures.", getName(), totalCompletedCount, totalSequenceCount));
+        qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' will not run, complete with %2/%3 captures.").arg(getName(), totalCompletedCount, totalSequenceCount);
         setEstimatedTime(0);
     }
     else
@@ -756,7 +757,132 @@ bool SchedulerJob::estimateJobTime(Scheduler *scheduler)
     return true;
 }
 
-bool SchedulerJob::updateCompletedJobsCount(Scheduler *scheduler)
+bool SchedulerJob::calculateAltitudeTime(double minAltitude, double minMoonAngle, int16_t moonSeparationScore)
+{
+    KSAlmanac ksal;
+    double dawn = ksal.getDawnAstronomicalTwilight();
+    double dusk = ksal.getDuskAstronomicalTwilight();
+    GeoLocation *geo = KStarsData::Instance()->geo();
+
+    // We wouldn't stat observation 30 mins (default) before dawn.
+    double const earlyDawn = dawn - Options::preDawnTime() / (60.0 * 24.0);
+
+    /* Compute UTC for beginning of today */
+    QDateTime const lt(KStarsData::Instance()->lt().date(), QTime());
+    KStarsDateTime const ut = geo->LTtoUT(KStarsDateTime(lt));
+
+    /* Retrieve target coordinates to be converted to horizontal to determine altitude */
+    SkyPoint target = getTargetCoords();
+
+    /* Retrieve the current fraction of the day */
+    QTime const now       = KStarsData::Instance()->lt().time();
+    double const fraction = now.hour() + now.minute() / 60.0 + now.second() / 3600;
+
+    /* This attempts to locate the first minute of the next 24 hours when the job target matches the altitude and moon constraints */
+    for (double hour = fraction; hour < (fraction + 24); hour += 1.0 / 60.0)
+    {
+        double const rawFrac = (hour > 24 ? (hour - 24) : hour) / 24.0;
+
+        /* Test twilight enforcement, and if enforced, bail out if start time is during day */
+        /* FIXME: rework day fraction loop to shift to dusk directly */
+        if (getEnforceTwilight() && dawn <= rawFrac && rawFrac <= dusk)
+            continue;
+
+        /* Compute altitude of target for the current fraction of the day */
+        KStarsDateTime const myUT = ut.addSecs(hour * 3600.0);
+        CachingDms const LST = geo->GSTtoLST(myUT.gst());
+        target.EquatorialToHorizontal(&LST, geo->lat());
+        double const altitude = target.alt().Degrees();
+
+        if (altitude > minAltitude)
+        {
+            QDateTime const startTime = geo->UTtoLT(myUT);
+
+            /* Test twilight enforcement, and if enforced, bail out if start time is too close to dawn */
+            if (getEnforceTwilight() && earlyDawn < rawFrac && rawFrac < dawn)
+            {
+                qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' reaches an altitude of %2 degrees at %3 but will not be scheduled due to "
+                            "close proximity to astronomical twilight rise.").arg(getName(), QString::number(minAltitude, 'g', 3), startTime.toString(getDateTimeDisplayFormat()));
+                return false;
+            }
+
+            /* Continue searching if Moon separation is not good enough */
+            if (minMoonAngle > 0 && moonSeparationScore < 0)
+                continue;
+
+            /* FIXME: the name of the function doesn't suggest the job can be modified */
+            setStartupTime(startTime);
+            /* Kept the informative log because of the reschedule of aborted jobs */
+            qCInfo(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' is scheduled to start at %2 where its altitude is %3 degrees.").arg(getName(),
+                                          startTime.toString(getDateTimeDisplayFormat()), QString::number(altitude, 'g', 3));
+            return true;
+        }
+    }
+
+    /* FIXME: move this to the caller too to comment the decision to reject the job */
+    if (minMoonAngle == -1)
+    {
+        if (getEnforceTwilight())
+        {
+            qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' has no night time with an altitude above %2 degrees during the next 24 hours, marking invalid.").arg(
+                                          getName(), QString::number(minAltitude, 'g', 3));
+        }
+        else qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' cannot rise to an altitude above %2 degrees in the next 24 hours, marking invalid.").arg(getName(), QString::number(minAltitude, 'g', 3));
+    }
+    else qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' cannot be scheduled with an altitude above %2 degrees with minimum moon "
+                                       "separation of %3 degrees in the next 24 hours, marking invalid.").arg(getName(), QString::number(minAltitude, 'g', 3),
+                                       QString::number(minMoonAngle, 'g', 3));
+    return false;
+}
+
+bool SchedulerJob::calculateCulmination(Scheduler* scheduler)
+{
+    GeoLocation *geo = KStarsData::Instance()->geo();
+    SkyPoint target = getTargetCoords();
+
+    SkyObject o;
+
+    o.setRA0(target.ra0());
+    o.setDec0(target.dec0());
+
+    o.EquatorialToHorizontal(KStarsData::Instance()->lst(), KStarsData::Instance()->geo()->lat());
+
+    QDateTime midnight(KStarsData::Instance()->lt().date(), QTime());
+    KStarsDateTime dt = geo->LTtoUT(KStarsDateTime(midnight));
+
+    QTime transitTime = o.transitTime(dt, geo);
+
+    qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 Transit time is %2").arg(getName(), transitTime.toString(getDateTimeDisplayFormat()));
+
+    int dayOffset = 0;
+    if (KStarsData::Instance()->lt().time() > transitTime)
+        dayOffset = 1;
+
+    QDateTime observationDateTime(QDate::currentDate().addDays(dayOffset),
+                                  transitTime.addSecs(getCulminationOffset() * 60));
+
+    qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 Observation time is %2 adjusted for %3 minute."
+                                   "%1 Observation time is %2 adjusted for %3 minutes.").arg(getName(),
+                                   observationDateTime.toString(getDateTimeDisplayFormat()), QString(getCulminationOffset()));
+
+    if (getEnforceTwilight() && scheduler->getDarkSkyScore(observationDateTime) < 0)
+    {
+        qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 culminates during the day and cannot be scheduled for observation.").arg(getName());
+        return false;
+    }
+
+    if (observationDateTime < (static_cast<QDateTime>(KStarsData::Instance()->lt())))
+    {
+        qCInfo(KSTARS_EKOS_SCHEDULER) << QString("Observation time for %1 already passed.").arg(getName());
+        return false;
+    }
+
+    setStartupTime(observationDateTime);
+    return true;
+}
+
+
+bool SchedulerJob::updateCompletedJobsCount()
 {
     /* Use a temporary map in order to limit the number of file searches */
     QMap<QString, uint16_t> newFramesCount;
@@ -768,10 +894,9 @@ bool SchedulerJob::updateCompletedJobsCount(Scheduler *scheduler)
     if (getState() == SchedulerJob::JOB_IDLE || getState() == SchedulerJob::JOB_EVALUATION) return true;
 
     /* Look into the sequence requirements, bypass if invalid */
-    if (loadSequenceQueue(scheduler, getSequenceFile().toLocalFile(), seqjobs, hasAutoFocus) == false)
+    if (loadSequenceQueue(getSequenceFile().toLocalFile(), seqjobs, hasAutoFocus) == false)
     {
-        scheduler->appendLogText(i18n("Warning! Job '%1' has inaccessible sequence '%2', marking invalid.",
-                            getName(), getSequenceFile().toLocalFile()));
+        qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' has inaccessible sequence '%2', marking invalid.").arg(getName(), getSequenceFile().toLocalFile());
         return false;
     }
 
@@ -826,7 +951,7 @@ int SchedulerJob::getCompletedFiles(const QString &path, const QString &seqPrefi
     return seqFileCount;
 }
 
-bool SchedulerJob::loadSequenceQueue(Scheduler *scheduler, const QString &fileURL,
+bool SchedulerJob::loadSequenceQueue(const QString &fileURL,
                                      QList<SequenceJob *> &jobs, bool &hasAutoFocus)
 {
     QFile sFile;
@@ -862,7 +987,7 @@ bool SchedulerJob::loadSequenceQueue(Scheduler *scheduler, const QString &fileUR
         }
         else if (errmsg[0])
         {
-            scheduler->appendLogText(QString(errmsg));
+            qCWarning(KSTARS_EKOS_SCHEDULER) << QString(errmsg);
             delLilXML(xmlParser);
             qDeleteAll(jobs);
             return false;

@@ -324,19 +324,33 @@ class SchedulerJob
 
     /**
          * @brief estimateJobTime Estimates the time the job takes to complete based on the sequence file and what modules to utilize during the observation run.
-         * @param scheduler Scheduler managing this job
          * @return Estimated time in seconds.
          */
-    bool estimateJobTime(Scheduler *scheduler);
+    bool estimateJobTime();
 
-    bool updateCompletedJobsCount(Scheduler *scheduler);
+    bool updateCompletedJobsCount();
 
     int getCompletedFiles(const QString &path, const QString &seqPrefix);
 
-    bool loadSequenceQueue(Scheduler *scheduler, const QString &fileURL,
-                           QList<SequenceJob *> &jobs, bool &hasAutoFocus);
+    bool loadSequenceQueue(const QString &fileURL, QList<SequenceJob *> &jobs, bool &hasAutoFocus);
 
     SequenceJob *processJobInfo(XMLEle *root);
+
+    /**
+         * @brief calculateAltitudeTime calculate the altitude time given the minimum altitude given.
+         * @param minAltitude minimum altitude required
+         * @param minMoonAngle minimum separation from the moon. -1 to ignore.
+         * @return True if found a time in the night where the object is at or above the minimum altitude, false otherise.
+         */
+    bool calculateAltitudeTime(double minAltitude, double minMoonAngle = -1, int16_t moonSeparationScore = 0);
+
+    /**
+         * @brief calculateCulmination find culmination time adjust for the job offset
+         * @param scheduler the current scheduler managing the job
+         * @return True if culmination time adjust for offset is a valid time in the night
+         */
+    bool calculateCulmination(Scheduler *scheduler);
+
 
     /** @brief Determining whether a SchedulerJob is a duplicate of another.
      * @param a_job is the other SchedulerJob to test duplication against.

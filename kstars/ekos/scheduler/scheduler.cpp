@@ -1158,7 +1158,7 @@ void Scheduler::evaluateJobs()
         // > 0  Job is estimated and time is known
         if (job->getEstimatedTime() == -1)
         {
-            if (job->estimateJobTime(this) == false)
+            if (job->estimateJobTime() == false)
             {
                 job->setState(SchedulerJob::JOB_INVALID);
                 continue;
@@ -1185,8 +1185,8 @@ void Scheduler::evaluateJobs()
                 if (score < 0)
                 {
                     // If Altitude or Dark score are negative, we try to schedule a better time for altitude and dark sky period.
-                    if (calculateAltitudeTime(job, job->getMinAltitude() > 0 ? job->getMinAltitude() : 0,
-                                              job->getMinMoonSeparation()))
+                    if (job->calculateAltitudeTime(job->getMinAltitude() > 0 ? job->getMinAltitude() : 0,
+                                              job->getMinMoonSeparation(), getMoonSeparationScore(job, job->getStartupTime())))
                     {
                         //appendLogText(i18n("%1 observation job is scheduled at %2", job->getName(), job->getStartupTime().toString()));
                         job->setState(SchedulerJob::JOB_SCHEDULED);
@@ -1226,7 +1226,7 @@ void Scheduler::evaluateJobs()
                 // #1.2 Culmination?
             case SchedulerJob::START_CULMINATION:
             {
-                if (calculateCulmination(job))
+                if (job->calculateCulmination(this))
                 {
                     appendLogText(i18n("Job '%1' is scheduled at %2 for culmination.", job->getName(),
                                        job->getStartupTime().toString()));
@@ -1710,127 +1710,6 @@ double Scheduler::findAltitude(const SkyPoint &target, const QDateTime &when)
     p.EquatorialToHorizontal(&LST, KStarsData::Instance()->geo()->lat());
 
     return p.alt().Degrees();
-}
-
-bool Scheduler::calculateAltitudeTime(SchedulerJob *job, double minAltitude, double minMoonAngle)
-{
-    // We wouldn't stat observation 30 mins (default) before dawn.
-    double const earlyDawn = Dawn - Options::preDawnTime() / (60.0 * 24.0);
-
-    /* Compute UTC for beginning of today */
-    QDateTime const lt(KStarsData::Instance()->lt().date(), QTime());
-    KStarsDateTime const ut = geo->LTtoUT(KStarsDateTime(lt));
-
-    /* Retrieve target coordinates to be converted to horizontal to determine altitude */
-    SkyPoint target = job->getTargetCoords();
-
-    /* Retrieve the current fraction of the day */
-    QTime const now       = KStarsData::Instance()->lt().time();
-    double const fraction = now.hour() + now.minute() / 60.0 + now.second() / 3600;
-
-    /* This attempts to locate the first minute of the next 24 hours when the job target matches the altitude and moon constraints */
-    for (double hour = fraction; hour < (fraction + 24); hour += 1.0 / 60.0)
-    {
-        double const rawFrac = (hour > 24 ? (hour - 24) : hour) / 24.0;
-
-        /* Test twilight enforcement, and if enforced, bail out if start time is during day */
-        /* FIXME: rework day fraction loop to shift to dusk directly */
-        if (job->getEnforceTwilight() && Dawn <= rawFrac && rawFrac <= Dusk)
-            continue;
-
-        /* Compute altitude of target for the current fraction of the day */
-        KStarsDateTime const myUT = ut.addSecs(hour * 3600.0);
-        CachingDms const LST = geo->GSTtoLST(myUT.gst());
-        target.EquatorialToHorizontal(&LST, geo->lat());
-        double const altitude = target.alt().Degrees();
-
-        if (altitude > minAltitude)
-        {
-            QDateTime const startTime = geo->UTtoLT(myUT);
-
-            /* Test twilight enforcement, and if enforced, bail out if start time is too close to dawn */
-            if (job->getEnforceTwilight() && earlyDawn < rawFrac && rawFrac < Dawn)
-            {
-                appendLogText(i18n("Warning! Job '%1' reaches an altitude of %2 degrees at %3 but will not be scheduled due to "
-                            "close proximity to astronomical twilight rise.",
-                            job->getName(), QString::number(minAltitude, 'g', 3), startTime.toString(job->getDateTimeDisplayFormat())));
-                return false;
-            }
-
-            /* Continue searching if Moon separation is not good enough */
-            if (minMoonAngle > 0 && getMoonSeparationScore(job, startTime) < 0)
-                continue;
-
-            /* FIXME: the name of the function doesn't suggest the job can be modified */
-            job->setStartupTime(startTime);
-            /* Kept the informative log because of the reschedule of aborted jobs */
-            appendLogText(i18n("Job '%1' is scheduled to start at %2 where its altitude is %3 degrees.", job->getName(),
-                        startTime.toString(job->getDateTimeDisplayFormat()), QString::number(altitude, 'g', 3)));
-            return true;
-        }
-    }
-
-    /* FIXME: move this to the caller too to comment the decision to reject the job */
-    if (minMoonAngle == -1)
-    {
-        if (job->getEnforceTwilight())
-        {
-            appendLogText(i18n("Warning! Job '%1' has no night time with an altitude above %2 degrees during the next 24 hours, marking invalid.",
-                               job->getName(), QString::number(minAltitude, 'g', 3)));
-        }
-        else appendLogText(i18n("Warning! Job '%1' cannot rise to an altitude above %2 degrees in the next 24 hours, marking invalid.",
-                                job->getName(), QString::number(minAltitude, 'g', 3)));
-    }
-    else appendLogText(i18n("Warning! Job '%1' cannot be scheduled with an altitude above %2 degrees with minimum moon "
-                            "separation of %3 degrees in the next 24 hours, marking invalid.",
-                            job->getName(), QString::number(minAltitude, 'g', 3),
-                            QString::number(minMoonAngle, 'g', 3)));
-    return false;
-}
-
-bool Scheduler::calculateCulmination(SchedulerJob *job)
-{
-    SkyPoint target = job->getTargetCoords();
-
-    SkyObject o;
-
-    o.setRA0(target.ra0());
-    o.setDec0(target.dec0());
-
-    o.EquatorialToHorizontal(KStarsData::Instance()->lst(), KStarsData::Instance()->geo()->lat());
-
-    QDateTime midnight(KStarsData::Instance()->lt().date(), QTime());
-    KStarsDateTime dt = geo->LTtoUT(KStarsDateTime(midnight));
-
-    QTime transitTime = o.transitTime(dt, geo);
-
-    appendLogText(i18n("%1 Transit time is %2", job->getName(), transitTime.toString(job->getDateTimeDisplayFormat())));
-
-    int dayOffset = 0;
-    if (KStarsData::Instance()->lt().time() > transitTime)
-        dayOffset = 1;
-
-    QDateTime observationDateTime(QDate::currentDate().addDays(dayOffset),
-                                  transitTime.addSecs(job->getCulminationOffset() * 60));
-
-    appendLogText(i18np("%1 Observation time is %2 adjusted for %3 minute.",
-                        "%1 Observation time is %2 adjusted for %3 minutes.", job->getName(),
-                        observationDateTime.toString(job->getDateTimeDisplayFormat()), job->getCulminationOffset()));
-
-    if (job->getEnforceTwilight() && getDarkSkyScore(observationDateTime) < 0)
-    {
-        appendLogText(i18n("%1 culminates during the day and cannot be scheduled for observation.", job->getName()));
-        return false;
-    }
-
-    if (observationDateTime < (static_cast<QDateTime>(KStarsData::Instance()->lt())))
-    {
-        appendLogText(i18n("Observation time for %1 already passed.", job->getName()));
-        return false;
-    }
-
-    job->setStartupTime(observationDateTime);
-    return true;
 }
 
 void Scheduler::checkWeather()
@@ -4256,7 +4135,7 @@ void Scheduler::updateCompletedJobsCount()
     /* Enumerate SchedulerJobs to count captures that are already stored */
     for (SchedulerJob *oneJob : jobs)
     {
-        oneJob->updateCompletedJobsCount(this);
+        oneJob->updateCompletedJobsCount();
     }
 }
 
