@@ -338,11 +338,10 @@ class SchedulerJob
 
     /**
          * @brief calculateAltitudeTime calculate the altitude time given the minimum altitude given.
-         * @param minAltitude minimum altitude required
-         * @param minMoonAngle minimum separation from the moon. -1 to ignore.
+         * @param moonSeparationScore score for the moon distance
          * @return True if found a time in the night where the object is at or above the minimum altitude, false otherise.
          */
-    bool calculateAltitudeTime(double minAltitude, double minMoonAngle = -1, int16_t moonSeparationScore = 0);
+    bool calculateAltitudeTime(int16_t moonSeparationScore = 0);
 
     /**
          * @brief calculateCulmination find culmination time adjust for the job offset

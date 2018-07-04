@@ -757,12 +757,14 @@ bool SchedulerJob::estimateJobTime()
     return true;
 }
 
-bool SchedulerJob::calculateAltitudeTime(double minAltitude, double minMoonAngle, int16_t moonSeparationScore)
+bool SchedulerJob::calculateAltitudeTime(int16_t moonSeparationScore)
 {
     KSAlmanac ksal;
     double dawn = ksal.getDawnAstronomicalTwilight();
     double dusk = ksal.getDuskAstronomicalTwilight();
     GeoLocation *geo = KStarsData::Instance()->geo();
+
+    double minAltitude = getMinAltitude() > 0 ? getMinAltitude() : 0;
 
     // We wouldn't stat observation 30 mins (default) before dawn.
     double const earlyDawn = dawn - Options::preDawnTime() / (60.0 * 24.0);
@@ -807,7 +809,7 @@ bool SchedulerJob::calculateAltitudeTime(double minAltitude, double minMoonAngle
             }
 
             /* Continue searching if Moon separation is not good enough */
-            if (minMoonAngle > 0 && moonSeparationScore < 0)
+            if (getMinMoonSeparation() > 0 && moonSeparationScore < 0)
                 continue;
 
             /* FIXME: the name of the function doesn't suggest the job can be modified */
@@ -820,7 +822,7 @@ bool SchedulerJob::calculateAltitudeTime(double minAltitude, double minMoonAngle
     }
 
     /* FIXME: move this to the caller too to comment the decision to reject the job */
-    if (minMoonAngle == -1)
+    if (getMinMoonSeparation() == -1)
     {
         if (getEnforceTwilight())
         {
@@ -831,7 +833,7 @@ bool SchedulerJob::calculateAltitudeTime(double minAltitude, double minMoonAngle
     }
     else qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' cannot be scheduled with an altitude above %2 degrees with minimum moon "
                                        "separation of %3 degrees in the next 24 hours, marking invalid.").arg(getName(), QString::number(minAltitude, 'g', 3),
-                                       QString::number(minMoonAngle, 'g', 3));
+                                       QString::number(getMinMoonSeparation(), 'g', 3));
     return false;
 }
 

@@ -1185,8 +1185,7 @@ void Scheduler::evaluateJobs()
                 if (score < 0)
                 {
                     // If Altitude or Dark score are negative, we try to schedule a better time for altitude and dark sky period.
-                    if (job->calculateAltitudeTime(job->getMinAltitude() > 0 ? job->getMinAltitude() : 0,
-                                              job->getMinMoonSeparation(), getMoonSeparationScore(job, job->getStartupTime())))
+                    if (job->calculateAltitudeTime(getMoonSeparationScore(job, job->getStartupTime())))
                     {
                         //appendLogText(i18n("%1 observation job is scheduled at %2", job->getName(), job->getStartupTime().toString()));
                         job->setState(SchedulerJob::JOB_SCHEDULED);
