@@ -10,13 +10,20 @@
 #include "schedulerjob.h"
 
 #include "dms.h"
+#include "ksalmanac.h"
 #include "kstarsdata.h"
 #include "scheduler.h"
+#include "Options.h"
+#include "ekos/capture/sequencejob.h"
+
+#include <ekos_scheduler_debug.h>
 
 #include <knotification.h>
 
 #include <QTableWidgetItem>
 
+namespace Ekos
+{
 void SchedulerJob::setName(const QString &value)
 {
     name = value;
@@ -505,6 +512,606 @@ void SchedulerJob::reset()
     repeatsRemaining = repeatsRequired;
 }
 
+bool SchedulerJob::estimateJobTime()
+{
+    /* updateCompletedJobsCount(); */
+
+    QList<SequenceJob *> seqJobs;
+    bool hasAutoFocus = false;
+
+    if (loadSequenceQueue(getSequenceFile().toLocalFile(), seqJobs, hasAutoFocus) == false)
+        return false;
+
+    setInSequenceFocus(hasAutoFocus);
+
+    bool lightFramesRequired = false;
+
+    int totalSequenceCount = 0, totalCompletedCount = 0;
+    double totalImagingTime  = 0;
+    bool rememberJobProgress = Options::rememberJobProgress();
+    foreach (SequenceJob *seqJob, seqJobs)
+    {
+        /* FIXME: find a way to actually display the filter name */
+        QString seqName = i18n("Job '%1' %2x%3\" %4", getName(), seqJob->getCount(), seqJob->getExposure(),
+                               seqJob->getFilterName());
+
+        if (seqJob->getUploadMode() == ISD::CCD::UPLOAD_LOCAL)
+        {
+            qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 duration cannot be estimated time since the sequence saves the files remotely.").arg(seqName);
+            setEstimatedTime(-2);
+
+            // Iterate over all sequence jobs, if just one requires FRAME_LIGHT then we set it as is and return
+            foreach (SequenceJob *oneJob, seqJobs)
+            {
+                if (oneJob->getFrameType() == FRAME_LIGHT)
+                {
+                    lightFramesRequired = true;
+                    break;
+                }
+            }
+
+            setLightFramesRequired(lightFramesRequired);
+            qDeleteAll(seqJobs);
+            return true;
+        }
+
+        int const captures_required = seqJob->getCount()*getRepeatsRequired();
+
+        int captures_completed = 0;
+        if (rememberJobProgress)
+        {
+            /* Enumerate sequence jobs associated to this scheduler job, and assign them a completed count.
+             *
+             * The objective of this block is to fill the storage map of the scheduler job with completed counts for each capture storage.
+             *
+             * Sequence jobs capture to a storage folder, and are given a count of captures to store at that location.
+             * The tricky part is to make sure the repeat count of the scheduler job is properly transferred to each sequence job.
+             *
+             * For instance, a scheduler job repeated three times must execute the full list of sequence jobs three times, thus
+             * has to tell each sequence job it misses all captures, three times. It cannot tell the sequence job three captures are
+             * missing, first because that's not how the sequence job is designed (completed count, not required count), and second
+             * because this would make the single sequence job repeat three times, instead of repeating the full list of sequence
+             * jobs three times.
+             *
+             * The consolidated storage map will be assigned to each sequence job based on their signature when the scheduler job executes them.
+             *
+             * For instance, consider a RGBL sequence of single captures. The map will store completed captures for R, G, B and L storages.
+             * If R and G have 1 file each, and B and L have no files, map[storage(R)] = map[storage(G)] = 1 and map[storage(B)] = map[storage(L)] = 0.
+             * When that scheduler job executes, only B and L captures will be processed.
+             *
+             * In the case of a RGBLRGB sequence of single captures, the second R, G and B map items will count one less capture than what is really in storage.
+             * If R and G have 1 file each, and B and L have no files, map[storage(R1)] = map[storage(B1)] = 1, and all others will be 0.
+             * When that scheduler job executes, B1, L, R2, G2 and B2 will be processed.
+             *
+             * This doesn't handle the case of duplicated scheduler jobs, that is, scheduler jobs with the same storage for capture sets.
+             * Those scheduler jobs will all change state to completion at the same moment as they all target the same storage.
+             * This is why it is important to manage the repeat count of the scheduler job, as stated earlier.
+             */
+
+            // Retrieve cached count of captures_completed captures for the output folder of this seqJob
+            QString const signature = seqJob->getLocalDir() + seqJob->getDirectoryPostfix();
+            captures_completed = capturedFramesCount[signature];
+
+            qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 sees %2 captures in output folder '%3'.").arg(seqName).arg(captures_completed).arg(signature);
+
+            // Enumerate sequence jobs to check how many captures are completed overall in the same storage as the current one
+            foreach (SequenceJob *prevSeqJob, seqJobs)
+            {
+                // Enumerate seqJobs up to the current one
+                if (seqJob == prevSeqJob)
+                    break;
+
+                // If the previous sequence signature matches the current, reduce completion count to take duplicates into account
+                if (!signature.compare(prevSeqJob->getLocalDir() + prevSeqJob->getDirectoryPostfix()))
+                {
+                    int const previous_captures_required = prevSeqJob->getCount()*getRepeatsRequired();
+                    qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 has a previous duplicate sequence job requiring %2 captures.").arg(seqName).arg(previous_captures_required);
+                    captures_completed -= previous_captures_required;
+                }
+
+                // Now completed count can be needlessly negative for this job, so clamp to zero
+                if (captures_completed < 0)
+                    captures_completed = 0;
+
+                // And break if no captures remain, this job has to execute
+                if (captures_completed == 0)
+                    break;
+            }
+
+            // Finally we're only interested in the number of captures required for this sequence item
+            if (captures_required < captures_completed)
+                captures_completed = captures_required;
+
+            qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 has completed %2/%3 of its required captures in output folder '%4'.").arg(seqName).arg(captures_completed).arg(captures_required).arg(signature);
+
+            // Update the completion count for this signature if we still have captures to take
+            // FIXME: setting the whole capture map each time is not very optimal
+            QMap<QString, uint16_t> fMap = getCapturedFramesMap();
+            if (fMap[signature] != captures_completed)
+            {
+                fMap[signature] = captures_completed;
+                setCapturedFramesMap(fMap);
+            }
+
+            // From now on, 'captures_completed' is the number of frames completed for the *current* sequence job
+        }
+
+
+        // Check if we still need any light frames. Because light frames changes the flow of the observatory startup
+        // Without light frames, there is no need to do focusing, alignment, guiding...etc
+        // We check if the frame type is LIGHT and if either the number of captures_completed frames is less than required
+        // OR if the completion condition is set to LOOP so it is never complete due to looping.
+        // FIXME: As it is implemented now, FINISH_LOOP may loop over a capture-complete, therefore inoperant, scheduler job.
+        bool const areJobCapturesComplete = !(captures_completed < captures_required || getCompletionCondition() == SchedulerJob::FINISH_LOOP);
+        if (seqJob->getFrameType() == FRAME_LIGHT)
+        {
+            if(areJobCapturesComplete)
+            {
+                qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 completed its sequence of %2 light frames.").arg(seqName).arg(captures_required);
+            }
+            else
+            {
+                lightFramesRequired = true;
+
+                // In some cases we do not need to calculate time we just need to know
+                // if light frames are required or not. So we break out
+                /*
+                if (getCompletionCondition() == SchedulerJob::FINISH_LOOP ||
+                    (getStartupCondition() == SchedulerJob::START_AT &&
+                     getCompletionCondition() == SchedulerJob::FINISH_AT))
+                    break;
+                */
+            }
+        }
+        else
+        {
+            qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 captures calibration frames.").arg(seqName);
+        }
+
+        totalSequenceCount += captures_required;
+        totalCompletedCount += rememberJobProgress ? captures_completed : 0;
+
+        /* If captures are not complete, we have imaging time left */
+        if (!areJobCapturesComplete)
+        {
+            /* if looping, consider we always have one capture left - currently this is discarded afterwards as -2 */
+            if (getCompletionCondition() == SchedulerJob::FINISH_LOOP)
+                totalImagingTime += fabs((seqJob->getExposure() + seqJob->getDelay()) * 1);
+            else
+                totalImagingTime += fabs((seqJob->getExposure() + seqJob->getDelay()) * (captures_required - captures_completed));
+
+            /* If we have light frames to process, add focus/dithering delay */
+            if (seqJob->getFrameType() == FRAME_LIGHT)
+            {
+                // If inSequenceFocus is true
+                if (hasAutoFocus)
+                {
+                    // Wild guess that each in sequence auto focus takes an average of 30 seconds. It can take any where from 2 seconds to 2+ minutes.
+                    qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 requires a focus procedure.").arg(seqName);
+                    totalImagingTime += (captures_required - captures_completed) * 30;
+                }
+                // If we're dithering after each exposure, that's another 10-20 seconds
+                if (getStepPipeline() & SchedulerJob::USE_GUIDE && Options::ditherEnabled())
+                {
+                    qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 requires a dither procedure.").arg(seqName);
+                    totalImagingTime += ((captures_required - captures_completed) * 15) / Options::ditherFrames();
+                }
+            }
+        }
+    }
+
+    setLightFramesRequired(lightFramesRequired);
+    setSequenceCount(totalSequenceCount);
+    setCompletedCount(totalCompletedCount);
+
+    qDeleteAll(seqJobs);
+
+    // We can't estimate times that do not finish when sequence is done
+    if (getCompletionCondition() == SchedulerJob::FINISH_LOOP)
+    {
+        // We can't know estimated time if it is looping indefinitely
+        qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' will be looping until Scheduler is stopped manually.").arg(getName());
+        setEstimatedTime(-2);
+    }
+    // If we know startup and finish times, we can estimate time right away
+    else if (getStartupCondition() == SchedulerJob::START_AT &&
+        getCompletionCondition() == SchedulerJob::FINISH_AT)
+    {
+        qint64 const diff = getStartupTime().secsTo(getCompletionTime());
+        qCInfo(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' will run for %2.").arg(getName(), dms(diff / 3600.0f).toHMSString());
+        setEstimatedTime(diff);
+    }
+    // Rely on the estimated imaging time to determine whether this job is complete or not - this makes the estimated time null
+    else if (totalImagingTime <= 0)
+    {
+        qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' will not run, complete with %2/%3 captures.").arg(getName(), totalCompletedCount, totalSequenceCount);
+        setEstimatedTime(0);
+    }
+    else
+    {
+        if (lightFramesRequired)
+        {
+            /* FIXME: estimation doesn't need to consider repeats, those will be optimized away by findNextJob (this is a regression) */
+            /* FIXME: estimation should base on actual measure of each step, eventually with preliminary data as what it used now */
+            // Are we doing tracking? It takes about 30 seconds
+            if (getStepPipeline() & SchedulerJob::USE_TRACK)
+                totalImagingTime += 30*getRepeatsRequired();
+            // Are we doing initial focusing? That can take about 2 minutes
+            if (getStepPipeline() & SchedulerJob::USE_FOCUS)
+                totalImagingTime += 120*getRepeatsRequired();
+            // Are we doing astrometry? That can take about 30 seconds
+            if (getStepPipeline() & SchedulerJob::USE_ALIGN)
+                totalImagingTime += 30*getRepeatsRequired();
+            // Are we doing guiding? Calibration process can take about 2 mins
+            if (getStepPipeline() & SchedulerJob::USE_GUIDE)
+                totalImagingTime += 120*getRepeatsRequired();
+        }
+
+        dms estimatedTime;
+        estimatedTime.setH(totalImagingTime / 3600.0);
+        qCInfo(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' estimated to take %2 to complete.").arg(getName(), estimatedTime.toHMSString());
+
+        setEstimatedTime(totalImagingTime);
+    }
+
+    return true;
+}
+
+bool SchedulerJob::calculateAltitudeTime(int16_t moonSeparationScore)
+{
+    KSAlmanac ksal;
+    double dawn = ksal.getDawnAstronomicalTwilight();
+    double dusk = ksal.getDuskAstronomicalTwilight();
+    GeoLocation *geo = KStarsData::Instance()->geo();
+
+    double minAltitude = getMinAltitude() > 0 ? getMinAltitude() : 0;
+
+    // We wouldn't stat observation 30 mins (default) before dawn.
+    double const earlyDawn = dawn - Options::preDawnTime() / (60.0 * 24.0);
+
+    /* Compute UTC for beginning of today */
+    QDateTime const lt(KStarsData::Instance()->lt().date(), QTime());
+    KStarsDateTime const ut = geo->LTtoUT(KStarsDateTime(lt));
+
+    /* Retrieve target coordinates to be converted to horizontal to determine altitude */
+    SkyPoint target = getTargetCoords();
+
+    /* Retrieve the current fraction of the day */
+    QTime const now       = KStarsData::Instance()->lt().time();
+    double const fraction = now.hour() + now.minute() / 60.0 + now.second() / 3600;
+
+    /* This attempts to locate the first minute of the next 24 hours when the job target matches the altitude and moon constraints */
+    for (double hour = fraction; hour < (fraction + 24); hour += 1.0 / 60.0)
+    {
+        double const rawFrac = (hour > 24 ? (hour - 24) : hour) / 24.0;
+
+        /* Test twilight enforcement, and if enforced, bail out if start time is during day */
+        /* FIXME: rework day fraction loop to shift to dusk directly */
+        if (getEnforceTwilight() && dawn <= rawFrac && rawFrac <= dusk)
+            continue;
+
+        /* Compute altitude of target for the current fraction of the day */
+        KStarsDateTime const myUT = ut.addSecs(hour * 3600.0);
+        CachingDms const LST = geo->GSTtoLST(myUT.gst());
+        target.EquatorialToHorizontal(&LST, geo->lat());
+        double const altitude = target.alt().Degrees();
+
+        if (altitude > minAltitude)
+        {
+            QDateTime const startTime = geo->UTtoLT(myUT);
+
+            /* Test twilight enforcement, and if enforced, bail out if start time is too close to dawn */
+            if (getEnforceTwilight() && earlyDawn < rawFrac && rawFrac < dawn)
+            {
+                qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' reaches an altitude of %2 degrees at %3 but will not be scheduled due to "
+                            "close proximity to astronomical twilight rise.").arg(getName(), QString::number(minAltitude, 'g', 3), startTime.toString(getDateTimeDisplayFormat()));
+                return false;
+            }
+
+            /* Continue searching if Moon separation is not good enough */
+            if (getMinMoonSeparation() > 0 && moonSeparationScore < 0)
+                continue;
+
+            /* FIXME: the name of the function doesn't suggest the job can be modified */
+            setStartupTime(startTime);
+            /* Kept the informative log because of the reschedule of aborted jobs */
+            qCInfo(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' is scheduled to start at %2 where its altitude is %3 degrees.").arg(getName(),
+                                          startTime.toString(getDateTimeDisplayFormat()), QString::number(altitude, 'g', 3));
+            return true;
+        }
+    }
+
+    /* FIXME: move this to the caller too to comment the decision to reject the job */
+    if (getMinMoonSeparation() == -1)
+    {
+        if (getEnforceTwilight())
+        {
+            qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' has no night time with an altitude above %2 degrees during the next 24 hours, marking invalid.").arg(
+                                          getName(), QString::number(minAltitude, 'g', 3));
+        }
+        else qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' cannot rise to an altitude above %2 degrees in the next 24 hours, marking invalid.").arg(getName(), QString::number(minAltitude, 'g', 3));
+    }
+    else qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' cannot be scheduled with an altitude above %2 degrees with minimum moon "
+                                       "separation of %3 degrees in the next 24 hours, marking invalid.").arg(getName(), QString::number(minAltitude, 'g', 3),
+                                       QString::number(getMinMoonSeparation(), 'g', 3));
+    return false;
+}
+
+bool SchedulerJob::calculateCulmination(Scheduler* scheduler)
+{
+    GeoLocation *geo = KStarsData::Instance()->geo();
+    SkyPoint target = getTargetCoords();
+
+    SkyObject o;
+
+    o.setRA0(target.ra0());
+    o.setDec0(target.dec0());
+
+    o.EquatorialToHorizontal(KStarsData::Instance()->lst(), KStarsData::Instance()->geo()->lat());
+
+    QDateTime midnight(KStarsData::Instance()->lt().date(), QTime());
+    KStarsDateTime dt = geo->LTtoUT(KStarsDateTime(midnight));
+
+    QTime transitTime = o.transitTime(dt, geo);
+
+    qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 Transit time is %2").arg(getName(), transitTime.toString(getDateTimeDisplayFormat()));
+
+    int dayOffset = 0;
+    if (KStarsData::Instance()->lt().time() > transitTime)
+        dayOffset = 1;
+
+    QDateTime observationDateTime(QDate::currentDate().addDays(dayOffset),
+                                  transitTime.addSecs(getCulminationOffset() * 60));
+
+    qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 Observation time is %2 adjusted for %3 minute."
+                                   "%1 Observation time is %2 adjusted for %3 minutes.").arg(getName(),
+                                   observationDateTime.toString(getDateTimeDisplayFormat()), QString(getCulminationOffset()));
+
+    if (getEnforceTwilight() && scheduler->getDarkSkyScore(observationDateTime) < 0)
+    {
+        qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 culminates during the day and cannot be scheduled for observation.").arg(getName());
+        return false;
+    }
+
+    if (observationDateTime < (static_cast<QDateTime>(KStarsData::Instance()->lt())))
+    {
+        qCInfo(KSTARS_EKOS_SCHEDULER) << QString("Observation time for %1 already passed.").arg(getName());
+        return false;
+    }
+
+    setStartupTime(observationDateTime);
+    return true;
+}
+
+
+bool SchedulerJob::updateCompletedJobsCount()
+{
+    /* Use a temporary map in order to limit the number of file searches */
+    QMap<QString, uint16_t> newFramesCount;
+
+    QList<SequenceJob*> seqjobs;
+    bool hasAutoFocus = false;
+
+    /* do nothing for idle jobs */
+    if (getState() == SchedulerJob::JOB_IDLE || getState() == SchedulerJob::JOB_EVALUATION) return true;
+
+    /* Look into the sequence requirements, bypass if invalid */
+    if (loadSequenceQueue(getSequenceFile().toLocalFile(), seqjobs, hasAutoFocus) == false)
+    {
+        qCWarning(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' has inaccessible sequence '%2', marking invalid.").arg(getName(), getSequenceFile().toLocalFile());
+        return false;
+    }
+
+    /* Enumerate the SchedulerJob's SequenceJobs to count captures stored for each */
+    /* FIXME: returns wrong values if another SchedulerJob puts the files into the same directory */
+    foreach (SequenceJob *oneSeqJob, seqjobs)
+    {
+        /* Only consider captures stored on client (Ekos) side */
+        /* FIXME: ask the remote for the file count */
+        if (oneSeqJob->getUploadMode() == ISD::CCD::UPLOAD_LOCAL)
+            continue;
+
+        /* FIXME: refactor signature determination in a separate function in order to support multiple backends */
+        /* FIXME: this signature path is incoherent when there is no filter wheel on the setup - bugfix should be elsewhere though */
+        QString const signature = oneSeqJob->getLocalDir() + oneSeqJob->getDirectoryPostfix();
+
+        /* We recount other jobs if somehow we don't have any count for their signature, else we reuse the previous count */
+        QMap<QString, uint16_t>::iterator const sigCount = capturedFramesCount.find(signature);
+        if (capturedFramesCount.end() != sigCount)
+                {
+                    newFramesCount[signature] = sigCount.value();
+                    continue;
+                }
+
+            /* Count captures already stored */
+            newFramesCount[signature] = getCompletedFiles(signature, oneSeqJob->getFullPrefix());
+    }
+
+    capturedFramesCount = newFramesCount;
+    return true;
+}
+
+int SchedulerJob::getCompletedFiles(const QString &path, const QString &seqPrefix)
+{
+    int seqFileCount = 0;
+
+    qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Searching in '%1' for prefix '%2'...").arg(path, seqPrefix);
+    QDirIterator it(path, QDir::Files);
+
+    /* FIXME: this counts all files with prefix in the storage location, not just captures. DSS analysis files are counted in, for instance. */
+    while (it.hasNext())
+    {
+        QString const fileName = QFileInfo(it.next()).baseName();
+
+        if (fileName.startsWith(seqPrefix))
+        {
+            qCDebug(KSTARS_EKOS_SCHEDULER) << QString("> Found '%1'").arg(fileName);
+            seqFileCount++;
+        }
+    }
+
+    return seqFileCount;
+}
+
+bool SchedulerJob::loadSequenceQueue(const QString &fileURL,
+                                     QList<SequenceJob *> &jobs, bool &hasAutoFocus)
+{
+    QFile sFile;
+    sFile.setFileName(fileURL);
+
+    if (!sFile.open(QIODevice::ReadOnly))
+    {
+        QString message = i18n("Unable to open sequence queue file '%1'", fileURL);
+        KMessageBox::sorry(0, message, i18n("Could Not Open File"));
+        return false;
+    }
+
+    LilXML *xmlParser = newLilXML();
+    char errmsg[MAXRBUF];
+    XMLEle *root = nullptr;
+    XMLEle *ep   = nullptr;
+    char c;
+
+    while (sFile.getChar(&c))
+    {
+        root = readXMLEle(xmlParser, c, errmsg);
+
+        if (root)
+        {
+            for (ep = nextXMLEle(root, 1); ep != nullptr; ep = nextXMLEle(root, 0))
+            {
+                if (!strcmp(tagXMLEle(ep), "Autofocus"))
+                    hasAutoFocus = (!strcmp(findXMLAttValu(ep, "enabled"), "true"));
+                else if (!strcmp(tagXMLEle(ep), "Job"))
+                    jobs.append(processJobInfo(ep));
+            }
+            delXMLEle(root);
+        }
+        else if (errmsg[0])
+        {
+            qCWarning(KSTARS_EKOS_SCHEDULER) << QString(errmsg);
+            delLilXML(xmlParser);
+            qDeleteAll(jobs);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+SequenceJob *SchedulerJob::processJobInfo(XMLEle *root)
+{
+    XMLEle *ep    = nullptr;
+    XMLEle *subEP = nullptr;
+
+    const QMap<QString, CCDFrameType> frameTypes = {
+        { "Light", FRAME_LIGHT }, { "Dark", FRAME_DARK }, { "Bias", FRAME_BIAS }, { "Flat", FRAME_FLAT }
+    };
+
+    SequenceJob *job = new SequenceJob();
+    QString rawPrefix, frameType, filterType;
+    double exposure    = 0;
+    bool filterEnabled = false, expEnabled = false, tsEnabled = false;
+
+    for (ep = nextXMLEle(root, 1); ep != nullptr; ep = nextXMLEle(root, 0))
+    {
+        if (!strcmp(tagXMLEle(ep), "Exposure"))
+        {
+            exposure = atof(pcdataXMLEle(ep));
+            job->setExposure(exposure);
+        }
+        else if (!strcmp(tagXMLEle(ep), "Filter"))
+        {
+            filterType = QString(pcdataXMLEle(ep));
+        }
+        else if (!strcmp(tagXMLEle(ep), "Type"))
+        {
+            frameType = QString(pcdataXMLEle(ep));
+            job->setFrameType(frameTypes[frameType]);
+        }
+        else if (!strcmp(tagXMLEle(ep), "Prefix"))
+        {
+            subEP = findXMLEle(ep, "RawPrefix");
+            if (subEP)
+                rawPrefix = QString(pcdataXMLEle(subEP));
+
+            subEP = findXMLEle(ep, "FilterEnabled");
+            if (subEP)
+                filterEnabled = !strcmp("1", pcdataXMLEle(subEP));
+
+            subEP = findXMLEle(ep, "ExpEnabled");
+            if (subEP)
+                expEnabled = (!strcmp("1", pcdataXMLEle(subEP)));
+
+            subEP = findXMLEle(ep, "TimeStampEnabled");
+            if (subEP)
+                tsEnabled = (!strcmp("1", pcdataXMLEle(subEP)));
+
+            job->setPrefixSettings(rawPrefix, filterEnabled, expEnabled, tsEnabled);
+        }
+        else if (!strcmp(tagXMLEle(ep), "Count"))
+        {
+            job->setCount(atoi(pcdataXMLEle(ep)));
+        }
+        else if (!strcmp(tagXMLEle(ep), "Delay"))
+        {
+            job->setDelay(atoi(pcdataXMLEle(ep)));
+        }
+        else if (!strcmp(tagXMLEle(ep), "FITSDirectory"))
+        {
+            job->setLocalDir(pcdataXMLEle(ep));
+        }
+        else if (!strcmp(tagXMLEle(ep), "RemoteDirectory"))
+        {
+            job->setRemoteDir(pcdataXMLEle(ep));
+        }
+        else if (!strcmp(tagXMLEle(ep), "UploadMode"))
+        {
+            job->setUploadMode(static_cast<ISD::CCD::UploadMode>(atoi(pcdataXMLEle(ep))));
+        }
+    }
+
+    // Make full prefix
+    QString imagePrefix = rawPrefix;
+
+    if (imagePrefix.isEmpty() == false)
+        imagePrefix += '_';
+
+    imagePrefix += frameType;
+
+    if (filterEnabled && filterType.isEmpty() == false &&
+        (job->getFrameType() == FRAME_LIGHT || job->getFrameType() == FRAME_FLAT))
+    {
+        imagePrefix += '_';
+
+        imagePrefix += filterType;
+    }
+
+    if (expEnabled)
+    {
+        imagePrefix += '_';
+
+        imagePrefix += QString::number(exposure, 'd', 0) + QString("_secs");
+    }
+
+    job->setFullPrefix(imagePrefix);
+
+
+    QString targetName = getName().remove(' ');
+
+    // Directory postfix
+    QString directoryPostfix;
+
+    directoryPostfix = QLatin1Literal("/") + targetName + QLatin1Literal("/") + frameType;
+    if ((job->getFrameType() == FRAME_LIGHT || job->getFrameType() == FRAME_FLAT) && filterType.isEmpty() == false)
+        directoryPostfix += QLatin1Literal("/") + filterType;
+
+    job->setDirectoryPostfix(directoryPostfix);
+
+    return job;
+}
+
+
 bool SchedulerJob::decreasingScoreOrder(SchedulerJob const *job1, SchedulerJob const *job2)
 {
     return job1->getScore() > job2->getScore();
@@ -524,4 +1131,5 @@ bool SchedulerJob::decreasingAltitudeOrder(SchedulerJob const *job1, SchedulerJo
 bool SchedulerJob::increasingStartupTimeOrder(SchedulerJob const *job1, SchedulerJob const *job2)
 {
     return job1->getStartupTime() < job2->getStartupTime();
+}
 }

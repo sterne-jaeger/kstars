@@ -10,6 +10,8 @@
 #pragma once
 
 #include "skypoint.h"
+#include "scheduler.h"
+#include "ekos/capture/sequencejob.h"
 
 #include <QUrl>
 #include <QMap>
@@ -19,6 +21,8 @@ class QLabel;
 
 class dms;
 
+namespace Ekos
+{
 class SchedulerJob
 {
   public:
@@ -318,6 +322,35 @@ class SchedulerJob
      */
     void reset();
 
+    /**
+         * @brief estimateJobTime Estimates the time the job takes to complete based on the sequence file and what modules to utilize during the observation run.
+         * @return Estimated time in seconds.
+         */
+    bool estimateJobTime();
+
+    bool updateCompletedJobsCount();
+
+    int getCompletedFiles(const QString &path, const QString &seqPrefix);
+
+    bool loadSequenceQueue(const QString &fileURL, QList<SequenceJob *> &jobs, bool &hasAutoFocus);
+
+    SequenceJob *processJobInfo(XMLEle *root);
+
+    /**
+         * @brief calculateAltitudeTime calculate the altitude time given the minimum altitude given.
+         * @param moonSeparationScore score for the moon distance
+         * @return True if found a time in the night where the object is at or above the minimum altitude, false otherise.
+         */
+    bool calculateAltitudeTime(int16_t moonSeparationScore = 0);
+
+    /**
+         * @brief calculateCulmination find culmination time adjust for the job offset
+         * @param scheduler the current scheduler managing the job
+         * @return True if culmination time adjust for offset is a valid time in the night
+         */
+    bool calculateCulmination(Scheduler *scheduler);
+
+
     /** @brief Determining whether a SchedulerJob is a duplicate of another.
      * @param a_job is the other SchedulerJob to test duplication against.
      * @return True if objects are different, but name and sequence file are identical, else false.
@@ -411,4 +444,7 @@ private:
     bool lightFramesRequired { false };
 
     QMap<QString, uint16_t> capturedFramesMap;
+    QMap<QString,uint16_t> capturedFramesCount;
 };
+
+}
