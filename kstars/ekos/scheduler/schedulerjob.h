@@ -10,7 +10,7 @@
 #pragma once
 
 #include "skypoint.h"
-#include "scheduler.h"
+#include "schedulestrategy.h"
 #include "ekos/capture/sequencejob.h"
 
 #include <QUrl>
@@ -23,6 +23,8 @@ class dms;
 
 namespace Ekos
 {
+class ScheduleStrategy;
+
 class SchedulerJob
 {
   public:
@@ -345,10 +347,10 @@ class SchedulerJob
 
     /**
          * @brief calculateCulmination find culmination time adjust for the job offset
-         * @param scheduler the current scheduler managing the job
+         * @param strategy the current scheduling strategy
          * @return True if culmination time adjust for offset is a valid time in the night
          */
-    bool calculateCulmination(Scheduler *scheduler);
+    bool calculateCulmination(ScheduleStrategy *strategy);
 
 
     /** @brief Determining whether a SchedulerJob is a duplicate of another.

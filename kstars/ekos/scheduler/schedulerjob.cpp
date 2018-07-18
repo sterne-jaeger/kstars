@@ -837,7 +837,7 @@ bool SchedulerJob::calculateAltitudeTime(int16_t moonSeparationScore)
     return false;
 }
 
-bool SchedulerJob::calculateCulmination(Scheduler* scheduler)
+bool SchedulerJob::calculateCulmination(ScheduleStrategy* strategy)
 {
     GeoLocation *geo = KStarsData::Instance()->geo();
     SkyPoint target = getTargetCoords();
@@ -867,7 +867,7 @@ bool SchedulerJob::calculateCulmination(Scheduler* scheduler)
                                    "%1 Observation time is %2 adjusted for %3 minutes.").arg(getName(),
                                    observationDateTime.toString(getDateTimeDisplayFormat()), QString(getCulminationOffset()));
 
-    if (getEnforceTwilight() && scheduler->getDarkSkyScore(observationDateTime) < 0)
+    if (getEnforceTwilight() && strategy->getDarkSkyScore(observationDateTime) < 0)
     {
         qCInfo(KSTARS_EKOS_SCHEDULER) << QString("%1 culminates during the day and cannot be scheduled for observation.").arg(getName());
         return false;
@@ -1124,8 +1124,8 @@ bool SchedulerJob::increasingPriorityOrder(SchedulerJob const *job1, SchedulerJo
 
 bool SchedulerJob::decreasingAltitudeOrder(SchedulerJob const *job1, SchedulerJob const *job2)
 {
-    return  Ekos::Scheduler::findAltitude(job1->getTargetCoords(), job1->getStartupTime()) >
-            Ekos::Scheduler::findAltitude(job2->getTargetCoords(), job2->getStartupTime());
+    return  Ekos::ScheduleStrategy::findAltitude(job1->getTargetCoords(), job1->getStartupTime()) >
+            Ekos::ScheduleStrategy::findAltitude(job2->getTargetCoords(), job2->getStartupTime());
 }
 
 bool SchedulerJob::increasingStartupTimeOrder(SchedulerJob const *job1, SchedulerJob const *job2)

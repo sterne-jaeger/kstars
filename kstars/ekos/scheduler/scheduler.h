@@ -24,16 +24,17 @@
 
 #include <cstdint>
 
+#include "schedulestrategy.h"
+
 class QProgressIndicator;
 
-class GeoLocation;
-class KSMoon;
 class SkyObject;
 
 namespace Ekos
 {
 class SequenceJob;
 class SchedulerJob;
+class ScheduleStrategy;
 
 /**
  * @brief The Ekos scheduler is a simple scheduler class to orchestrate automated multi object observation jobs.
@@ -49,7 +50,7 @@ class Scheduler : public QWidget, public Ui::Scheduler
     typedef enum {
         SCHEDULER_IDLE,
         SCHEDULER_STARTUP,
-        SCHEDULER_RUNNIG,
+        SCHEDULER_RUNNING,
         SCHEDULER_PAUSED,
         SCHEDULER_SHUTDOWN,
         SCHEDULER_ABORTED
@@ -167,14 +168,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
          */
     void setSolverAction(Align::GotoMode mode);
 
-    /**
-         * @brief findAltitude Find altitude given a specific time
-         * @param target Target
-         * @param when date time to find altitude
-         * @return Altitude of the target at the specific date and time given.
-         */
-    static double findAltitude(const SkyPoint &target, const QDateTime &when);
-
     /** @defgroup SchedulerDBusInterface Ekos DBus Interface - Scheduler Module
          * Ekos::Align interface provides primary functions to run and stop the scheduler.
         */
@@ -202,9 +195,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
          * @brief Resets all jobs to IDLE
          */
     Q_SCRIPTABLE void resetAllJobs();
-
-    /* FIXME: this should be private. Resolve back loop from SchedulerJob */
-    int16_t getDarkSkyScore(const QDateTime &observationDateTime);
 
     /** @}*/
 
@@ -357,6 +347,11 @@ class Scheduler : public QWidget, public Ui::Scheduler
     void evaluateJobs();
 
     /**
+     * @brief Check if there are upcoming jobs. If not, reschedule them.
+     */
+    void checkUpcomingJobs();
+
+    /**
          * @brief executeJob After the best job is selected, we call this in order to start the process that will execute the job.
          * checkJobStatus slot will be connected in order to figure the exact state of the current job each second
          * @param value
@@ -365,37 +360,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
 
     void executeScript(const QString &filename);
 
-
-    /**
-         * @brief getAltitudeScore Get the altitude score of an object. The higher the better
-         * @param job Active job
-         * @param when At what time to check the target altitude
-         * @return Altitude score. Altitude below minimum default of 15 degrees but above horizon get -20 score. Bad altitude below minimum required altitude or below horizon get -1000 score.
-         */
-    int16_t getAltitudeScore(SchedulerJob *job, QDateTime when);
-
-    /**
-         * @brief getMoonSeparationScore Get moon separation score. The further apart, the better, up a maximum score of 20.
-         * @param job Target job
-         * @param when What time to check the moon separation?
-         * @return Moon separation score
-         */
-    int16_t getMoonSeparationScore(SchedulerJob *job, QDateTime when);
-
-
-    /**
-         * @brief calculateJobScore Calculate job dark sky score, altitude score, and moon separation scores and returns the sum.
-         * @param job job to evaluate
-         * @param when time to evaluate constraints
-         * @return Total score
-         */
-    int16_t calculateJobScore(SchedulerJob *job, QDateTime when);
-
-    /**
-         * @brief getWeatherScore Get weather condition score.
-         * @return If weather condition OK, return 0, if warning return -500, if alert return -1000
-         */
-    int16_t getWeatherScore();
 
     /**
          * @brief calculateDawnDusk Get dawn and dusk times for today
@@ -502,18 +466,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
     bool processJobInfo(XMLEle *root);
 
     /**
-         * @brief getCurrentMoonSeparation Get current moon separation in degrees at current time for the given job
-         * @param job scheduler job
-         * @return Separation in degrees
-         */
-    double getCurrentMoonSeparation(SchedulerJob *job);
-
-    /**
-         * @brief updatePreDawn Update predawn time depending on current time and user offset
-         */
-    void updatePreDawn();
-
-    /**
          * @brief createJobSequence Creates a job sequence for the mosaic tool given the prefix and output dir. The currently selected sequence file is modified
          * and a new version given the supplied parameters are saved to the output directory
          * @param prefix Prefix to set for the job sequence
@@ -530,10 +482,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
     void loadProfiles();
 
     XMLEle *getSequenceJobRoot();
-
-    bool isWeatherOK(SchedulerJob *job);
-
-    void updateCompletedJobsCount();
 
     Ekos::Scheduler *ui { nullptr };
     //DBus interfaces
@@ -553,10 +501,10 @@ class Scheduler : public QWidget, public Ui::Scheduler
     StartupState startupState { STARTUP_IDLE };
     ShutdownState shutdownState { SHUTDOWN_IDLE };
     ParkWaitStatus parkWaitState { PARKWAIT_IDLE };
-    /// List of all jobs as entered by the user or file
-    QList<SchedulerJob *> jobs;
     /// Active job
     SchedulerJob *currentJob { nullptr };
+    /// scheduling strategy
+    ScheduleStrategy *strategy { nullptr };
     /// URL to store the scheduler file
     QUrl schedulerURL;
     /// URL for Ekos Sequence
@@ -573,26 +521,14 @@ class Scheduler : public QWidget, public Ui::Scheduler
     QProgressIndicator *pi { nullptr };
     /// Are we editing a job right now? Job row index
     int jobUnderEdit { -1 };
-    /// Pointer to Moon object
-    KSMoon *moon { nullptr };
     /// Pointer to Geograpic locatoin
     GeoLocation *geo { nullptr };
     /// How many repeated job batches did we complete thus far?
     uint16_t captureBatch { 0 };
     /// Startup and Shutdown scripts process
     QProcess scriptProcess;
-    /// Store day fraction of dawn to calculate dark skies range
-    double Dawn { -1 };
-    /// Store day fraction of dusk to calculate dark skies range
-    double Dusk { -1 };
-    /// Pre-dawn is where we stop all jobs, it is a user-configurable value before Dawn.
-    QDateTime preDawnDateTime;
-    /// Dusk date time
-    QDateTime duskDateTime;
     /// Was job modified and needs saving?
     bool mDirty { false };
-    /// Keep watch of weather status
-    IPState weatherStatus { IPS_IDLE };
     /// Keep track of how many times we didn't receive weather updates
     uint8_t noWeatherCounter { 0 };
     /// Are we shutting down until later?

@@ -231,6 +231,7 @@ if (INDI_FOUND)
 
             # Scheduler
             ekos/scheduler/schedulerjob.cpp
+            ekos/scheduler/schedulestrategy.cpp
             ekos/scheduler/scheduler.cpp
             ekos/scheduler/mosaic.cpp
 
