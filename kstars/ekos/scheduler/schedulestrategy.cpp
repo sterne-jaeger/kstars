@@ -50,7 +50,11 @@ void ScheduleStrategy::evaluateJobs() {
 
     /* refresh sortings */
     refresh();
+
+    /* update job status counters */
+    updateJobsCounts();
 }
+
 
 void ScheduleStrategy::refresh() {
     /* FIXME: it is possible to evaluate jobs while KStars has a time offset, so warn the user about this */
@@ -405,6 +409,41 @@ void ScheduleStrategy::delayOverlappingJobs(SchedulerJob *firstJob)
         lastJobEstimatedTime = job->getEstimatedTime();
     }
 
+}
+
+void ScheduleStrategy::updateJobsCounts() {
+    invalidJobs = 0;
+    completedJobs = 0;
+    abortedJobs = 0;
+    upcomingJobs = 0;
+
+    /* Partition jobs into invalid/aborted/completed/upcoming jobs */
+    foreach (SchedulerJob *job, allJobs)
+    {
+        switch (job->getState())
+        {
+        case SchedulerJob::JOB_INVALID:
+            invalidJobs++;
+            break;
+
+        case SchedulerJob::JOB_ERROR:
+        case SchedulerJob::JOB_ABORTED:
+            abortedJobs++;
+            break;
+
+        case SchedulerJob::JOB_COMPLETE:
+            completedJobs++;
+            break;
+
+        case SchedulerJob::JOB_SCHEDULED:
+        case SchedulerJob::JOB_BUSY:
+            upcomingJobs++;
+            break;
+
+        default:
+            break;
+        }
+    }
 }
 
 SchedulerJob *ScheduleStrategy::getBestRatedJob()

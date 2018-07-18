@@ -1087,24 +1087,52 @@ void Scheduler::evaluateJobs()
     /* update the strategy */
     strategy->evaluateJobs();
 
-    /*
-     * At this step, we scheduled all jobs that had to be scheduled because they could not start as soon as possible.
-     * Now we check the amount of jobs we have to run.
-     */
-
-    checkUpcomingJobs();
-    /*
-     * At this step, we still have jobs to run.
-     * We filter out jobs that won't run now, and make sure jobs are not all starting at the same time.
-     */
-
+    /* now let's take the one rated best */
     SchedulerJob *firstJob = strategy->getBestRatedJob();
 
-    /* If there are no jobs left to run in the filtered list, shutdown scheduler and stop evaluation now */
+    setCurrentJob(firstJob);
+
+    /* handle the situation that there is no job to be run */
     if (firstJob == nullptr)
     {
+
+        /* If there are no jobs left to run in the filtered list, shutdown scheduler and stop evaluation now */
         if (!jobEvaluationOnly)
         {
+            if (strategy->getInvalidJobsCount() > 0)
+                appendLogText(i18np("%1 job is invalid.", "%1 jobs are invalid.", strategy->getInvalidJobsCount()));
+
+            if (strategy->getCompletedJobsCount() > 0)
+                appendLogText(i18np("%1 job completed.", "%1 jobs completed.", strategy->getCompletedJobsCount()));
+
+            /* are there candidates that we give a new chance? */
+            if (strategy->getAbortedJobsCount() > 0) {
+                appendLogText(i18np("%1 job aborted.", "%1 jobs aborted - resetting", strategy->getAbortedJobsCount()));
+
+                /* restart the aborted jobs */
+                guideFailureCount   = 0;
+                focusFailureCount   = 0;
+                alignFailureCount   = 0;
+                captureFailureCount = 0;
+
+                foreach (SchedulerJob *job, *strategy->getAllJobs()) {
+                    if (job->getState() == SchedulerJob::JOB_ABORTED) {
+                        job->reset();
+                    }
+                }
+                jobStatus->setText(i18n("Sleeping for %1 secs...", DEFAULT_SECS_SLEEP_ABORTED));
+                queueTable->clearSelection();
+
+                sleepLabel->show();
+                sleepTimer.setInterval(( DEFAULT_SECS_SLEEP_ABORTED * 1000));
+                sleepTimer.start();
+                schedulerTimer.stop();
+
+                // skip the rest
+                return;
+            }
+
+            /* OK, there aren't even candidates, so let's finish */
             if (startupState == STARTUP_COMPLETE)
             {
                 appendLogText(i18n("No jobs left in the scheduler queue, starting shutdown procedure..."));
@@ -1131,12 +1159,6 @@ void Scheduler::evaluateJobs()
         return;
     }
 
-    /*
-     * At this step, we finished evaluating jobs.
-     * We select the first job that has to be run, per schedule.
-     */
-
-    setCurrentJob(firstJob);
 
     /* Check if job can be processed right now */
     if (currentJob->getFileStartupCondition() == SchedulerJob::START_ASAP)
@@ -1243,74 +1265,6 @@ void Scheduler::evaluateJobs()
     }
 }
 
-void Scheduler::checkUpcomingJobs() {
-    int invalidJobs = 0, completedJobs = 0, abortedJobs = 0, upcomingJobs = 0;
-
-    /* Partition jobs into invalid/aborted/completed/upcoming jobs */
-    foreach (SchedulerJob *job, *strategy->getAllJobs())
-    {
-        switch (job->getState())
-        {
-            case SchedulerJob::JOB_INVALID:
-                invalidJobs++;
-                break;
-
-            case SchedulerJob::JOB_ERROR:
-            case SchedulerJob::JOB_ABORTED:
-                abortedJobs++;
-                break;
-
-            case SchedulerJob::JOB_COMPLETE:
-                completedJobs++;
-                break;
-
-            case SchedulerJob::JOB_SCHEDULED:
-            case SchedulerJob::JOB_BUSY:
-                upcomingJobs++;
-                break;
-
-            default:
-                break;
-        }
-    }
-
-    /* And render some statistics */
-    if (upcomingJobs == 0 && jobEvaluationOnly == false)
-    {
-        if (invalidJobs > 0)
-            appendLogText(i18np("%1 job is invalid.", "%1 jobs are invalid.", invalidJobs));
-
-        if (abortedJobs > 0) {
-            appendLogText(i18np("%1 job aborted.", "%1 jobs aborted - resetting", abortedJobs));
-            guideFailureCount   = 0;
-            focusFailureCount   = 0;
-            alignFailureCount   = 0;
-            captureFailureCount = 0;
-
-            foreach (SchedulerJob *job, *strategy->getAllJobs()) {
-                if (job->getState() == SchedulerJob::JOB_ABORTED) {
-                    job->reset();
-                }
-            }
-            setCurrentJob(nullptr);
-            jobStatus->setText(i18n("Sleeping for %1 secs...", DEFAULT_SECS_SLEEP_ABORTED));
-            queueTable->clearSelection();
-
-            sleepLabel->show();
-            sleepTimer.setInterval(( DEFAULT_SECS_SLEEP_ABORTED * 1000));
-            sleepTimer.start();
-            schedulerTimer.stop();
-
-            // skip the rest
-            return;
-        }
-
-        if (completedJobs > 0)
-            appendLogText(i18np("%1 job completed.", "%1 jobs completed.", completedJobs));
-    }
-
-
-}
 
 void Scheduler::wakeUpScheduler()
 {

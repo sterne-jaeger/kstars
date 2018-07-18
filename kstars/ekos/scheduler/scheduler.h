@@ -347,11 +347,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
     void evaluateJobs();
 
     /**
-     * @brief Check if there are upcoming jobs. If not, reschedule them.
-     */
-    void checkUpcomingJobs();
-
-    /**
          * @brief executeJob After the best job is selected, we call this in order to start the process that will execute the job.
          * checkJobStatus slot will be connected in order to figure the exact state of the current job each second
          * @param value

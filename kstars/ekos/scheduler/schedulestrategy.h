@@ -108,6 +108,13 @@ public:
 
     QList<SchedulerJob *> *getAllJobs() {return &allJobs; }
 
+    int invalidJobs = 0, completedJobs = 0, abortedJobs = 0, upcomingJobs = 0;
+    int getInvalidJobsCount() {return invalidJobs; }
+    int getCompletedJobsCount() {return completedJobs; }
+    int getAbortedJobsCount() {return abortedJobs; }
+    int getUpcomingJobsCount() {return upcomingJobs; }
+
+
 private:
     /** refresh the sorted values **/
     void refresh();
@@ -151,6 +158,11 @@ private:
          * @return If weather condition OK, return 0, if warning return -500, if alert return -1000
          */
     int16_t getWeatherScore(bool enforceWeather);
+
+    /**
+     * @brief update job status counters
+     */
+    void updateJobsCounts();
 
 
     bool isWeatherOK(SchedulerJob *job);
