@@ -892,9 +892,6 @@ bool SchedulerJob::updateCompletedJobsCount()
     QList<SequenceJob*> seqjobs;
     bool hasAutoFocus = false;
 
-    /* do nothing for idle jobs */
-    if (getState() == SchedulerJob::JOB_IDLE || getState() == SchedulerJob::JOB_EVALUATION) return true;
-
     /* Look into the sequence requirements, bypass if invalid */
     if (loadSequenceQueue(getSequenceFile().toLocalFile(), seqjobs, hasAutoFocus) == false)
     {
@@ -915,16 +912,22 @@ bool SchedulerJob::updateCompletedJobsCount()
         /* FIXME: this signature path is incoherent when there is no filter wheel on the setup - bugfix should be elsewhere though */
         QString const signature = oneSeqJob->getLocalDir() + oneSeqJob->getDirectoryPostfix();
 
-        /* We recount other jobs if somehow we don't have any count for their signature, else we reuse the previous count */
-        QMap<QString, uint16_t>::iterator const sigCount = capturedFramesCount.find(signature);
-        if (capturedFramesCount.end() != sigCount)
-                {
-                    newFramesCount[signature] = sigCount.value();
-                    continue;
-                }
-
+        if (getState() == SchedulerJob::JOB_IDLE || getState() == SchedulerJob::JOB_EVALUATION)
+        {
+            /* We recount idle/evaluated jobs systematically */
             /* Count captures already stored */
             newFramesCount[signature] = getCompletedFiles(signature, oneSeqJob->getFullPrefix());
+        }
+        else
+        {
+            /* We recount other jobs if somehow we don't have any count for their signature, else we reuse the previous count */
+            QMap<QString, uint16_t>::iterator const sigCount = capturedFramesCount.find(signature);
+            if (capturedFramesCount.end() != sigCount)
+            {
+                newFramesCount[signature] = sigCount.value();
+                continue;
+            }
+        }
     }
 
     capturedFramesCount = newFramesCount;
