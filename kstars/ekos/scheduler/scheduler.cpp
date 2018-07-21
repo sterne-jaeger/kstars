@@ -1090,8 +1090,6 @@ void Scheduler::evaluateJobs()
     /* now let's take the one rated best */
     SchedulerJob *firstJob = strategy->getBestRatedJob();
 
-    setCurrentJob(firstJob);
-
     /* handle the situation that there is no job to be run */
     if (firstJob == nullptr)
     {
@@ -1159,6 +1157,7 @@ void Scheduler::evaluateJobs()
         return;
     }
 
+    setCurrentJob(firstJob);
 
     /* Check if job can be processed right now */
     if (currentJob->getFileStartupCondition() == SchedulerJob::START_ASAP)
