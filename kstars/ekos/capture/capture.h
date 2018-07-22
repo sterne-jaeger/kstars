@@ -600,7 +600,11 @@ class Capture : public QWidget, public Ui::Capture
 
     /* Capture */
     double seqExpose { 0 };
-    int seqTotalCount { 0 };
+    QMap<QString,int> totalFramesCountMap;
+    int getTotalFramesCount(QString signature);
+    int seqTotalCount;
+    void updateTotalFramesCounts();
+
     int seqCurrentCount { 0 };
     int seqDelay { 0 };
     int retries { 0 };
