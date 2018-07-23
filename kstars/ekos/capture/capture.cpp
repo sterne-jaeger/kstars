@@ -431,8 +431,6 @@ void Capture::start()
     if (autofocusCheck->isChecked() && autoFocusReady == false)
         appendLogText(i18n("Warning: in-sequence focusing is selected but autofocus process was not started."));
 
-    updateTotalFramesCounts();
-
     prepareJob(first_job);
 }
 
@@ -1303,7 +1301,7 @@ bool Capture::resumeSequence()
     }    
 
     // If seqTotalCount is zero, we have to find if there are more pending jobs in the queue
-    if (seqTotalCount <= 0)
+    if (seqTotalCount == 0)
     {
         SequenceJob *next_job = nullptr;
 
@@ -2286,7 +2284,7 @@ void Capture::prepareJob(SequenceJob *job)
             // Fully complete
             if (seqFileCount >= getTotalFramesCount(signature))
             {
-                activeJob->setCompleted(getTotalFramesCount(signature));
+                activeJob->setCompleted(seqFileCount);
                 imgProgress->setValue(getTotalFramesCount(signature));
                 qCDebug(KSTARS_EKOS_CAPTURE) << "Job" << job->getFullPrefix() << "already complete.";
                 processJobCompletion();
@@ -2737,25 +2735,25 @@ void Capture::updateHFRThreshold()
     HFRPixels->setValue(median + (median * (Options::hFRThresholdPercentage() / 100.0)));
 }
 
-void Capture::updateTotalFramesCounts()
+int Capture::getTotalFramesCount(QString signature)
 {
-    totalFramesCountMap.clear();
+
+    int  result = 0;
+    bool found  = false;
 
     foreach (SequenceJob *job, jobs)
     {
         // FIXME: this should be part of SequenceJob
         QString sig = job->getSignature();
-        if (! totalFramesCountMap.contains(sig))
-            totalFramesCountMap[sig] = job->getCount();
-        else
-            totalFramesCountMap[sig] += job->getCount();
+        if (sig == signature)
+        {
+            result += job->getCount();
+            found = true;
+        }
     }
-}
 
-int Capture::getTotalFramesCount(QString signature)
-{
-    if (totalFramesCountMap.contains(signature))
-        return totalFramesCountMap.value(signature);
+    if (found)
+        return result;
     else
         return -1;
 }
