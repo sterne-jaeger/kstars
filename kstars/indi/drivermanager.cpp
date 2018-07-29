@@ -123,7 +123,9 @@ DriverManager::DriverManager(QWidget *parent) : QDialog(parent)
 
     readINDIHosts();
 
-    updateCustomDrivers();
+    m_CustomDrivers = new CustomDrivers(this, driversList);
+
+    updateCustomDrivers();    
 
 #ifdef Q_OS_WIN
     ui->localTreeWidget->setEnabled(false);
@@ -155,7 +157,7 @@ void DriverManager::processDeviceStatus(DriverInfo *dv)
         if (ui->localTreeWidget->currentItem())
             currentDriver = ui->localTreeWidget->currentItem()->text(LOCAL_NAME_COLUMN);
 
-        for (auto &item : ui->localTreeWidget->findItems(dv->getTreeLabel(), Qt::MatchExactly | Qt::MatchRecursive))
+        for (auto &item : ui->localTreeWidget->findItems(dv->getLabel(), Qt::MatchExactly | Qt::MatchRecursive))
         {
             item->setText(LOCAL_VERSION_COLUMN, dv->getVersion());
 
@@ -228,7 +230,7 @@ void DriverManager::processDeviceStatus(DriverInfo *dv)
             }
 
             // Only update the log if the current driver is selected
-            if (currentDriver == dv->getTreeLabel())
+            if (currentDriver == dv->getLabel())
             {
                 ui->serverLogText->clear();
                 ui->serverLogText->append(dv->getServerBuffer());
@@ -259,19 +261,22 @@ void DriverManager::getUniqueHosts(QList<DriverInfo *> &dList, QList<QList<Drive
 {
     bool found = false;
 
+    // Iterate over all drivers
     for (DriverInfo *dv : dList)
     {
         QList<DriverInfo *> uList;
 
+        // Let's see for drivers with idential hosts and ports
         for (DriverInfo *idv : dList)
         {
-            if (dv->getHost() == idv->getHost() && dv->getPort() == idv->getPort())
+            // If we get a match between port and hostname, we add it to the list
+            if ( (dv->getHost() == idv->getHost() && dv->getPort() == idv->getPort()))
             {
                 // Check if running already
                 if (dv->getClientState() || dv->getServerState())
                 {
                     int ans = KMessageBox::warningContinueCancel(
-                        0, i18n("Driver %1 is already running, do you want to restart it?", dv->getTreeLabel()));
+                        nullptr, i18n("Driver %1 is already running, do you want to restart it?", dv->getLabel()));
                     if (ans == KMessageBox::Cancel)
                         continue;
                     else
@@ -284,6 +289,7 @@ void DriverManager::getUniqueHosts(QList<DriverInfo *> &dList, QList<QList<Drive
 
                 found = false;
 
+                // Check to see if the driver already been added elsewhere
                 for (auto &qdi : uHosts)
                 {
                     for (DriverInfo *di : qdi)
@@ -530,7 +536,7 @@ void DriverManager::updateLocalTab()
 
     foreach (DriverInfo *device, driversList)
     {
-        if (currentDriver == device->getTreeLabel())
+        if (currentDriver == device->getLabel())
         {
             processDeviceStatus(device);
             break;
@@ -574,7 +580,7 @@ void DriverManager::processLocalTree(bool dState)
             port = -1;
 
             //device->state = (dev_request == DriverInfo::DEV_TERMINATE) ? DriverInfo::DEV_START : DriverInfo::DEV_TERMINATE;
-            if (item->text(LOCAL_NAME_COLUMN) == device->getTreeLabel() && device->getServerState() != dState)
+            if (item->text(LOCAL_NAME_COLUMN) == device->getLabel() && device->getServerState() != dState)
             {
                 processed_devices.append(device);
 
@@ -1059,31 +1065,7 @@ bool DriverManager::buildDeviceGroup(XMLEle *root, char errmsg[])
     }
 
     groupName = valuXMLAtt(ap);
-
-    if (groupName.indexOf("Telescopes") != -1)
-        groupType = KSTARS_TELESCOPE;
-    else if (groupName.indexOf("CCDs") != -1)
-        groupType = KSTARS_CCD;
-    else if (groupName.indexOf("Filter") != -1)
-        groupType = KSTARS_FILTER;
-    else if (groupName.indexOf("Video") != -1)
-        groupType = KSTARS_VIDEO;
-    else if (groupName.indexOf("Focusers") != -1)
-        groupType = KSTARS_FOCUSER;
-    else if (groupName.indexOf("Adaptive Optics") != -1)
-        groupType = KSTARS_ADAPTIVE_OPTICS;
-    else if (groupName.indexOf("Domes") != -1)
-        groupType = KSTARS_DOME;
-    else if (groupName.indexOf("Receivers") != -1)
-        groupType = KSTARS_RECEIVERS;
-    else if (groupName.indexOf("GPS") != -1)
-        groupType = KSTARS_GPS;
-    else if (groupName.indexOf("Auxiliary") != -1)
-        groupType = KSTARS_AUXILIARY;
-    else if (groupName.indexOf("Weather") != -1)
-        groupType = KSTARS_WEATHER;
-    else
-        groupType = KSTARS_UNKNOWN;
+    groupType = DeviceFamilyLabels.key(groupName);
 
 #ifndef HAVE_CFITSIO
     // We do not create these groups if we don't have CFITSIO support
@@ -1222,16 +1204,14 @@ bool DriverManager::buildDriverElement(XMLEle *root, QTreeWidgetItem *DGroup, De
 
     dv = new DriverInfo(name);
 
-    dv->setTreeLabel(label);
+    dv->setLabel(label);
     dv->setVersion(version);
-    dv->setDriver(driver);
+    dv->setExecutable(driver);
     dv->setSkeletonFile(skel);
     dv->setType(groupType);
     dv->setDriverSource(driverSource);
-    dv->setUserPort(port);
-
-    if (vMap.isEmpty() == false)
-        dv->setAuxInfo(vMap);
+    dv->setUserPort(port);    
+    dv->setAuxInfo(vMap);
 
     connect(dv, SIGNAL(deviceStateChanged(DriverInfo*)), this, SLOT(processDeviceStatus(DriverInfo*)));
 
@@ -1253,6 +1233,30 @@ bool DriverManager::checkDriverAvailability(const QString &driver)
     return driverFile.exists();
 }
 
+void DriverManager::updateCustomDrivers()
+{
+    for (const QVariantMap & oneDriver : m_CustomDrivers->customDrivers())
+    {
+        DriverInfo *dv = new DriverInfo(oneDriver["Name"].toString());
+        dv->setLabel(oneDriver["Label"].toString());
+        dv->setUniqueLabel(dv->getLabel());
+        dv->setExecutable(oneDriver["Exec"].toString());
+        dv->setVersion(oneDriver["Version"].toString());
+        dv->setType(DeviceFamilyLabels.key(oneDriver["Family"].toString()));
+        dv->setDriverSource(CUSTOM_SOURCE);
+
+        bool driverIsAvailable = checkDriverAvailability(oneDriver["Exec"].toString());
+        QVariantMap vMap;
+        vMap.insert("LOCALLY_AVAILABLE", driverIsAvailable);
+        dv->setAuxInfo(vMap);
+
+        driversList.append(dv);
+    }
+}
+
+
+// JM 2018-07-23: Disabling the old custom drivers method
+#if 0
 void DriverManager::updateCustomDrivers()
 {
     QString label;
@@ -1291,7 +1295,7 @@ void DriverManager::updateCustomDrivers()
                 drv->setAuxInfo(vMap);
             }
 
-            drv->setDriver(s->driver());
+            drv->setExecutable(s->driver());
 
             continue;
         }
@@ -1306,8 +1310,8 @@ void DriverManager::updateCustomDrivers()
 
         DriverInfo *dv = new DriverInfo(name);
 
-        dv->setTreeLabel(label);
-        dv->setDriver(driver);
+        dv->setLabel(label);
+        dv->setExecutable(driver);
         dv->setVersion(version);
         dv->setType(KSTARS_TELESCOPE);
         dv->setDriverSource(EM_XML);
@@ -1335,7 +1339,7 @@ void DriverManager::updateCustomDrivers()
 
         // Find if the group already exists
         QList<QTreeWidgetItem *> devList =
-            ui->localTreeWidget->findItems(dev->getTreeLabel(), Qt::MatchExactly | Qt::MatchRecursive);
+            ui->localTreeWidget->findItems(dev->getLabel(), Qt::MatchExactly | Qt::MatchRecursive);
         if (!devList.isEmpty())
         {
             widgetDev = devList[0];
@@ -1348,6 +1352,7 @@ void DriverManager::updateCustomDrivers()
         delete (dev);
     }
 }
+#endif
 
 void DriverManager::addINDIHost()
 {
@@ -1452,7 +1457,7 @@ void DriverManager::removeINDIHost()
                 return;
             }
 
-            if (KMessageBox::warningContinueCancel(0,
+            if (KMessageBox::warningContinueCancel(nullptr,
                                                    i18n("Are you sure you want to remove the %1 client?",
                                                         ui->clientTreeWidget->currentItem()->text(HOST_NAME_COLUMN)),
                                                    i18n("Delete Confirmation"),
@@ -1522,7 +1527,7 @@ DriverInfo *DriverManager::findDriverByLabel(const QString &label)
 {
     for (auto &dv : driversList)
     {
-        if (dv->getTreeLabel() == label)
+        if (dv->getLabel() == label)
             return dv;
     }
 
@@ -1533,7 +1538,7 @@ DriverInfo *DriverManager::findDriverByExec(const QString &exec)
 {
     for (auto &dv : driversList)
     {
-        if (dv->getDriver() == exec)
+        if (dv->getExecutable() == exec)
             return dv;
     }
 

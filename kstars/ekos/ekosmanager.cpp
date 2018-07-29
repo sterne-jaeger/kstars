@@ -101,6 +101,8 @@ EkosManager::EkosManager(QWidget *parent) : QDialog(parent)
     connect(connectB, SIGNAL(clicked()), this, SLOT(connectDevices()));
     connect(disconnectB, SIGNAL(clicked()), this, SLOT(disconnectDevices()));
 
+    ekosLiveB->setIcon(QIcon::fromTheme("folder-cloud"));
+    ekosLiveB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
     ekosLiveClient.reset(new EkosLive::Client(this));
 
     // INDI Control Panel
@@ -111,6 +113,10 @@ EkosManager::EkosManager(QWidget *parent) : QDialog(parent)
     });
 
     connect(this, &EkosManager::newEkosStartingStatus, ekosLiveClient.get()->message(), &EkosLive::Message::setEkosStatingStatus);
+    connect(ekosLiveClient.get()->message(), &EkosLive::Message::connected, [&]() {ekosLiveB->setIcon(QIcon(":/icons/cloud-online.svg"));});
+    connect(ekosLiveClient.get()->message(), &EkosLive::Message::disconnected, [&]() {ekosLiveB->setIcon(QIcon::fromTheme("folder-cloud"));});
+    connect(ekosLiveClient.get()->media(), &EkosLive::Media::newBoundingRect, ekosLiveClient.get()->message(), &EkosLive::Message::setBoundingRect);
+    connect(ekosLiveClient.get()->message(), &EkosLive::Message::resetPolarView, ekosLiveClient.get()->media(), &EkosLive::Media::resetPolarView);
 
     connect(optionsB, SIGNAL(clicked()), KStars::Instance(), SLOT(slotViewOps()));
     // Save as above, but it appears in all modules
@@ -168,6 +174,10 @@ EkosManager::EkosManager(QWidget *parent) : QDialog(parent)
     deleteProfileB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
     wizardProfileB->setIcon(QIcon::fromTheme("tools-wizard"));
     wizardProfileB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+    customDriversB->setIcon(QIcon::fromTheme("roll"));
+    customDriversB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+
+    connect(customDriversB, &QPushButton::clicked, DriverManager::Instance(), &DriverManager::showCustomDrivers);
 
     // Load all drivers
     loadDrivers();
@@ -175,9 +185,7 @@ EkosManager::EkosManager(QWidget *parent) : QDialog(parent)
     // Load add driver profiles
     loadProfiles();
 
-    // INDI Control Panel and Ekos Options
-    ekosLiveB->setIcon(QIcon::fromTheme("folder-cloud"));
-    ekosLiveB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+    // INDI Control Panel and Ekos Options    
     optionsB->setIcon(QIcon::fromTheme("configure", QIcon(":/icons/ekos_setup.png")));
     optionsB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
 
@@ -345,7 +353,7 @@ void EkosManager::loadDrivers()
     foreach (DriverInfo *dv, DriverManager::Instance()->getDrivers())
     {
         if (dv->getDriverSource() != HOST_SOURCE)
-            driversList[dv->getTreeLabel()] = dv;
+            driversList[dv->getLabel()] = dv;
     }
 }
 
@@ -497,7 +505,7 @@ bool EkosManager::start()
                 }
                 else
                 {
-                    drv->setUniqueLabel(drv->getTreeLabel() + " Guide");
+                    drv->setUniqueLabel(drv->getLabel() + " Guide");
                 }
             }
 
@@ -541,12 +549,42 @@ bool EkosManager::start()
         if (drv != nullptr)
             managedDrivers.append(drv->clone());
 
+        // Add remote drivers if we have any
+        if (currentProfile->remotedrivers.isEmpty() == false && currentProfile->remotedrivers.contains("@"))
+        {
+            for (auto remoteDriver : currentProfile->remotedrivers.split(","))
+            {
+                QString name, label, host("localhost"), port("7624");
+                QStringList properties = remoteDriver.split(QRegExp("[@:]"));
+                if (properties.length() > 1)
+                {
+                    name = properties[0];
+                    host = properties[1];
+
+                    if (properties.length() > 2)
+                        port = properties[2];
+                }
+
+                DriverInfo *dv = new DriverInfo(name);
+                dv->setRemoteHost(host);
+                dv->setRemotePort(port);
+
+                label = name;
+                // Remove extra quotes
+                label.remove("\"");
+                dv->setLabel(label);
+                dv->setUniqueLabel(label);
+                managedDrivers.append(dv);
+            }
+        }
+
+
         if (haveCCD == false && haveGuider == false)
         {
             KMessageBox::error(this, i18n("Ekos requires at least one CCD or Guider to operate."));
             managedDrivers.clear();
             return false;
-        }
+        }                
 
         nDevices = managedDrivers.count();
     }
@@ -668,6 +706,8 @@ bool EkosManager::start()
             remoteManagerStart = false;
             if (INDI::WebManager::isOnline(currentProfile))
             {
+                INDI::WebManager::syncCustomDrivers(currentProfile);
+
                 if (INDI::WebManager::areDriversRunning(currentProfile) == false)
                 {
                     INDI::WebManager::stopProfile(currentProfile);
@@ -1597,7 +1637,7 @@ void EkosManager::processNewProperty(INDI::Property *prop)
 
     if (!strcmp(prop->getName(), "GPS_REFRESH"))
     {
-        managedDevices[KSTARS_GPS] = deviceInterface;
+        managedDevices.insertMulti(KSTARS_AUXILIARY, deviceInterface);
         if (mountProcess.get() != nullptr)
             mountProcess->setGPS(deviceInterface);
     }
@@ -1902,8 +1942,10 @@ void EkosManager::initAlign()
         });
         connect(alignProcess.get(), &Ekos::Align::newFrame, ekosLiveClient.get()->media(), &EkosLive::Media::sendUpdatedFrame);
 
-        connect(alignProcess.get(), &Ekos::Align::polarResultUpdated, ekosLiveClient.get()->message(), &EkosLive::Message::setPolarResults);
+        connect(alignProcess.get(), &Ekos::Align::polarResultUpdated, ekosLiveClient.get()->message(), &EkosLive::Message::setPolarResults);        
         connect(alignProcess.get(), &Ekos::Align::settingsUpdated, ekosLiveClient.get()->message(), &EkosLive::Message::sendAlignSettings);
+
+        connect(alignProcess.get(), &Ekos::Align::newCorrectionVector, ekosLiveClient.get()->media(), &EkosLive::Media::setCorrectionVector);
 
     }
 
@@ -2038,8 +2080,11 @@ void EkosManager::initMount()
     }
     );
 
-    if (managedDevices.contains(KSTARS_GPS))
-        mountProcess->setGPS(managedDevices[KSTARS_GPS]);
+    foreach (ISD::GDInterface *device, findDevices(KSTARS_AUXILIARY))
+    {
+        if (device->getBaseDevice()->getDriverInterface() & INDI::BaseDevice::GPS_INTERFACE)
+            mountProcess->setGPS(device);
+    }
 
     if (Options::ekosLeftIcons())
     {

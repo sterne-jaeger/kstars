@@ -11,12 +11,14 @@
 #pragma once
 
 #include "indicommon.h"
+#include "customdrivers.h"
 #include "ui_drivermanager.h"
 
 #include <QDialog>
 #include <QFrame>
 #include <QIcon>
 #include <QString>
+#include <QPointer>
 
 #include <lilxml.h>
 
@@ -103,10 +105,19 @@ class DriverManager : public QDialog
 
     ClientManager *getClientManager(DriverInfo *dv);
 
-    const QList<DriverInfo *> &getDrivers() { return driversList; }
+    const QList<DriverInfo *> &getDrivers() const { return driversList; }
+    const QList<QVariantMap> &getCustomDrivers() const { return m_CustomDrivers->customDrivers(); }
 
     const QStringList &getDriversStringList() { return driversStringList; }
 
+    /**
+     * @brief getUniqueHosts Given a list of DriverInfos, extract all the host:port information from all the drivers.
+     * and then consolidate each groups of drivers that belong to the same server & port to a specific list
+     * e.g. If we have driver1 (localhost:7624), driver2(192.168.1.90:7624), driver3(localhost:7624) then this would create
+     * two lists. First list contains [driver1,driver3] and second list contains [driver2] making each list _unique_ in terms of host params.
+     * @param dList list of driver to examine
+     * @param uHosts List of unique hosts, each with a group of drivers that belong to it.
+     */
     void getUniqueHosts(QList<DriverInfo *> &dList, QList<QList<DriverInfo *>> &uHosts);
 
     void addDriver(DriverInfo *di) { driversList.append(di); }
@@ -141,6 +152,7 @@ class DriverManager : public QDialog
     QList<ServerManager *> servers;
     QList<ClientManager *> clients;
     QStringList driversStringList;
+    QPointer<CustomDrivers> m_CustomDrivers;
 
   public slots:
     //void enableDevice(INDI_D *device);
@@ -166,6 +178,8 @@ class DriverManager : public QDialog
     void processServerTermination(ServerManager *server);
 
     void processDeviceStatus(DriverInfo *dv);
+
+    void showCustomDrivers() { m_CustomDrivers->show(); }
 
   signals:
     void clientTerminated(ClientManager *);

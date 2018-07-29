@@ -30,14 +30,16 @@ DriverInfo::DriverInfo(const QString &inName)
 DriverInfo::DriverInfo(DriverInfo *di)
 {
     name          = di->getName();
-    treeLabel     = di->getTreeLabel();
+    label         = di->getLabel();
     uniqueLabel   = di->getUniqueLabel();
-    driver        = di->getDriver();
+    exec          = di->getExecutable();
     version       = di->getVersion();
     userPort      = di->getUserPort();
     skelFile      = di->getSkeletonFile();
     port          = di->getPort();
     hostname      = di->getHost();
+    remotePort    = di->getRemotePort();
+    remoteHostname= di->getRemoteHost();
     type          = di->getType();
     serverState   = di->getServerState();
     clientState   = di->getClientState();
@@ -72,7 +74,7 @@ void DriverInfo::reset()
     clientManager = nullptr;
 }
 
-QString DriverInfo::getServerBuffer()
+QString DriverInfo::getServerBuffer() const
 {
     if (serverManager != nullptr)
         return serverManager->getLogBuffer();
@@ -129,7 +131,7 @@ void DriverInfo::removeDevice(DeviceInfo *idv)
     delete (idv);
 }
 
-DeviceInfo *DriverInfo::getDevice(const QString &deviceName)
+DeviceInfo *DriverInfo::getDevice(const QString &deviceName) const
 {
     foreach (DeviceInfo *idv, devices)
     {

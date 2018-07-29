@@ -133,6 +133,7 @@ if (INDI_FOUND)
         indi/drivermanager.ui
         indi/opsindi.ui
         indi/indihostconf.ui
+        indi/customdrivers.ui
         #indi/telescopewizard.ui
     )
 
@@ -163,6 +164,7 @@ if (INDI_FOUND)
         indi/streamwg.cpp
         indi/videowg.cpp
         indi/indiwebmanager.cpp
+        indi/customdrivers.cpp
     )
 
     if (CFITSIO_FOUND)
@@ -195,6 +197,7 @@ if (INDI_FOUND)
             ekos/guide/guide.ui
             ekos/guide/opscalibration.ui
             ekos/guide/opsguide.ui
+            ekos/guide/manualdither.ui
             #TODO remove from GIT
             #ekos/guide/guider.ui
             #ekos/guide/rcalibration.ui
@@ -484,7 +487,6 @@ set(kstars_dialogsui_SRCS
     dialogs/wizlocation.ui
     dialogs/wizdownload.ui
     dialogs/wizdata.ui
-    dialogs/wizastrometry.ui
     dialogs/newfov.ui
     dialogs/exportimagedialog.ui
 )
@@ -1121,7 +1123,7 @@ ecm_add_app_icon(KSTARS_APP_SRCS ICONS
 
 qt5_add_resources(KSTARS_APP_SRCS data/kstars.qrc)
 
-if ("${CMAKE_TOOLCHAIN_FILE}" MATCHES "android.toolchain.cmake$")
+if (ANDROID)
     add_library(kstars SHARED ${KSTARS_APP_SRCS})
     target_compile_options(kstars PRIVATE ${KSTARSLITE_CPP_OPTIONS} -DUSE_QT5_INDI -DKSTARS_LITE)
     add_dependencies(KStarsLiteLib cfitsio indi raw)

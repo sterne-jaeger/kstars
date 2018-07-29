@@ -29,6 +29,8 @@
 #include <basedevice.h>
 #include <ekos_guide_debug.h>
 
+#include "ui_manualdither.h"
+
 #define CAPTURE_TIMEOUT_THRESHOLD 30000
 
 namespace Ekos
@@ -56,6 +58,8 @@ Guide::Guide() : QWidget()
 
     // To do calibrate + guide in one command
     //autoCalibrateGuide = false;
+
+    connect(manualDitherB, &QPushButton::clicked, this, &Guide::handleManualDither);
 
     guideView = new FITSView(guideWidget, FITS_GUIDE);
     guideView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -1239,6 +1243,8 @@ bool Guide::abort()
             targetChip->abortExposure();
     }    
 
+    manualDitherB->setEnabled(false);
+
     setBusy(false);
 
     switch (state)
@@ -1434,7 +1440,7 @@ void Guide::setCaptureComplete()
             break;
     }
 
-    emit newStarPixmap(guideView->getTrackingBoxPixmap());
+    emit newStarPixmap(guideView->getTrackingBoxPixmap(10));
 }
 
 void Guide::appendLogText(const QString &text)
@@ -1900,6 +1906,7 @@ void Guide::setStatus(Ekos::GuideState newState)
         case GUIDE_CALIBRATION_ERROR:
         case GUIDE_IDLE:
             setBusy(false);
+            manualDitherB->setEnabled(false);
             break;
 
         case GUIDE_CALIBRATING:
@@ -1919,6 +1926,7 @@ void Guide::setStatus(Ekos::GuideState newState)
                 guideTimer = QTime::currentTime();
                 refreshColorScheme();
             }
+            manualDitherB->setEnabled(true);
 
             break;
 
@@ -2220,6 +2228,9 @@ bool Guide::setGuiderType(int type)
             }
             else
                 guiderCombo->setEnabled(false);
+
+            if (Options::resetGuideCalibration())
+                appendLogText(i18n("Warning: Reset Guiding Calibration is enabled. It is recommended to turn this option off for PHD2."));
 
             updateGuideParams();
             break;
@@ -2624,7 +2635,7 @@ void Guide::setAxisDelta(double ra, double de)
 
     emit newAxisDelta(ra, de);
 
-    profilePixmap = driftGraph->grab(QRect(QPoint(0, 50), QSize(driftGraph->width(), 150)));
+    profilePixmap = driftGraph->grab();
     emit newProfilePixmap(profilePixmap);
 }
 
@@ -3138,6 +3149,45 @@ void Guide::setDefaultCCD(const QString &ccd)
         QString ccdName = ccd;
         ccdName = ccdName.remove(" Guider");
         setBLOBEnabled(Options::guideRemoteImagesEnabled(), ccdName);
+    }
+}
+
+void Guide::handleManualDither()
+{
+    ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
+    if (targetChip == nullptr)
+        return;
+
+    Ui::ManualDither ditherDialog;
+    QDialog container(this);
+    ditherDialog.setupUi(&container);
+
+    if (guiderType != GUIDE_INTERNAL)
+    {
+        ditherDialog.coordinatesR->setEnabled(false);
+        ditherDialog.x->setEnabled(false);
+        ditherDialog.y->setEnabled(false);
+    }
+
+    int minX, maxX, minY, maxY, minW, maxW, minH, maxH;
+    targetChip->getFrameMinMax(&minX, &maxX, &minY, &maxY, &minW, &maxW, &minH, &maxH);
+
+    ditherDialog.x->setMinimum(minX);
+    ditherDialog.x->setMaximum(maxX);
+    ditherDialog.y->setMinimum(minY);
+    ditherDialog.y->setMaximum(maxY);
+
+    ditherDialog.x->setValue(starCenter.x());
+    ditherDialog.y->setValue(starCenter.y());
+
+    if (container.exec() == QDialog::Accepted)
+    {
+        if (ditherDialog.magnitudeR->isChecked())
+            guider->dither(ditherDialog.magnitude->value());
+        else
+        {
+            dynamic_cast<InternalGuider *>(guider)->ditherXY(ditherDialog.x->value(), ditherDialog.y->value());
+        }
     }
 }
 

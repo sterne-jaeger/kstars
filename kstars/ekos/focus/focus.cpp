@@ -493,7 +493,7 @@ void Focus::checkFilter(int filterNum)
     if (filterNum <= Filters.count())
         currentFilter = Filters.at(filterNum-1);
 
-    filterManager->setCurrentFilter(currentFilter);
+    filterManager->setCurrentFilterWheel(currentFilter);
 
     FilterPosCombo->clear();
 
@@ -548,6 +548,8 @@ void Focus::checkFocuser(int FocuserNum)
 
     if (FocuserNum <= Focusers.count())
         currentFocuser = Focusers.at(FocuserNum);
+
+    filterManager->setFocusReady(currentFocuser->isConnected());
 
     // Disconnect all focusers
     foreach (ISD::Focuser *oneFocuser, Focusers)
@@ -1095,8 +1097,7 @@ void Focus::setCaptureComplete()
 
     FITSData *image_data = focusView->getImageData();
 
-    starPixmap = focusView->getTrackingBoxPixmap();
-    emit newStarPixmap(starPixmap);
+    emit newStarPixmap(focusView->getTrackingBoxPixmap(10));
 
     // If we're not framing, let's try to detect stars
     //if (inFocusLoop == false || (inFocusLoop && focusView->isTrackingBoxEnabled()))

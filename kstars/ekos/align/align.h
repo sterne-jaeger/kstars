@@ -270,6 +270,16 @@ class Align : public QWidget, public Ui::Align
          */
     void getFOVScale(double &fov_w, double &fov_h, double &fov_scale);
 
+    /**
+     * @brief getCalculatedFOVScale Get calculated FOV scales from the current CCD+Telescope combination.
+     * @param fov_w return calculated fov width in arcminutes
+     * @param fov_h return calculated fov height in arcminutes
+     * @param fov_scale return calculated fov pixcale in arcsecs per pixel.
+     * @note This is NOT the same as effective FOV which is the measured FOV from astrometry. It is the
+     * theoritical FOV from calculated values.
+     */
+    void getCalculatedFOVScale(double &fov_w, double &fov_h, double &fov_scale);
+
     void setFilterManager(const QSharedPointer<FilterManager> &manager);
 
     // Ekos Live Client helper functions
@@ -498,6 +508,7 @@ class Align : public QWidget, public Ui::Align
     // This is sent when the pixmap is updated within the view
     void newFrame(FITSView *view);
     void polarResultUpdated(QLineF correctionVector, QString polarError);
+    void newCorrectionVector(QLineF correctionVector);
     void newSolverResults(double orientation, double ra, double dec, double pixscale);
     void newSolution(const QJsonObject &solution);
 

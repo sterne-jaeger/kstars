@@ -91,6 +91,15 @@ class KSUserDB
     bool DeleteEffectiveFOV(const QString &id);
     void GetAllEffectiveFOVs(QList<QVariantMap> &effectiveFOVs);
 
+
+    /************************************************************************
+     ******************************* Driver Alias *************************
+     ************************************************************************/
+
+    bool AddCustomDriver(const QVariantMap &oneDriver);
+    bool DeleteCustomDriver(const QString &id);
+    void GetAllCustomDrivers(QList<QVariantMap> &CustomDrivers);
+
     /************************************************************************
      *********************************** HiPS *******************************
      ************************************************************************/
@@ -369,4 +378,6 @@ class KSUserDB
     QSqlDatabase userdb_;
     /** XML reader for importing old formats **/
     QXmlStreamReader *reader_ { nullptr };
+
+    static const uint16_t SCHEMA_VERSION = 300;
 };

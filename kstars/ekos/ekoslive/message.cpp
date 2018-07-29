@@ -282,38 +282,7 @@ void Message::sendFilterWheels()
 
 void Message::setCaptureSettings(const QJsonObject &settings)
 {
-    Ekos::Capture * capture = m_Manager->captureModule();
-
-    // Camera Name
-    capture->setCCD(settings["camera"].toString());
-
-    // Filter Wheel
-    QString filterWheel = settings["fw"].toString();
-    if (filterWheel.isEmpty() == false)
-        capture->setFilter(filterWheel, settings["filter"].toString());
-
-    // Temperature
-    double temperature = settings["temperature"].toDouble(-1000);
-    if (temperature != -1000)
-    {
-        capture->setForceTemperature(true);
-        capture->setTargetTemperature(temperature);
-    }
-
-    // Frame Type
-    capture->setFrameType(settings["frame"].toString("Light"));
-
-    // Exposure Duration
-    capture->setExposure(settings["exp"].toDouble(1));
-
-    // Binning
-    int bin = settings.value("bin").toInt(1);
-    capture->setBinning(bin,bin);
-
-    // ISO
-    int isoIndex = settings["iso"].toInt(-1);
-    if (isoIndex >= 0)
-        capture->setISO(isoIndex);
+   m_Manager->captureModule()->setSettings(settings);
 }
 
 void Message::processCaptureCommands(const QString &command, const QJsonObject &payload)
@@ -516,10 +485,30 @@ void Message::processPolarCommands(const QString &command, const QJsonObject &pa
     {
         align->setPAHRefreshDuration(payload["value"].toDouble(1));
         align->startPAHRefreshProcess();
-    }    
+    }
+    else if (command == commands[PAH_RESET_VIEW])
+    {
+        emit resetPolarView();
+    }
     else if (command == commands[PAH_SET_CROSSHAIR])
     {
-        align->setPAHCorrectionOffsetPercentage(payload["x"].toDouble(), payload["y"].toDouble());
+        double x = payload["x"].toDouble();
+        double y = payload["y"].toDouble();
+
+        if (boundingRect.isNull() == false)
+        {
+            // #1 Find actual dimension inside the bounding rectangle
+            // since if we have bounding rectable then x,y fractions are INSIDE it
+            double boundX = x * boundingRect.width();
+            double boundY = y * boundingRect.height();
+
+            // #2 Find fraction of the dimensions above the the full image size
+            // Add to it the bounding rect top left offsets
+            x = (boundX+boundingRect.x()) / viewSize.width();
+            y = (boundY+boundingRect.y()) / viewSize.height();
+        }
+
+        align->setPAHCorrectionOffsetPercentage(x,y);
     }
     else if (command == commands[PAH_SELECT_STAR_DONE])
     {
@@ -543,10 +532,9 @@ void Message::setPAHStage(Ekos::Align::PAHStage stage)
         {"stage", align->getPAHStage()}
     };
 
-    // Increase size so that when we send STAR_SELECT image, it is sizable enough
-    // for Ekos Live Messages. By default it would be pretty small and usually the user controls it by
-    // zooming in and out but for EkosLive, we zoom in at this stage.
-    if (stage == Ekos::Align::PAH_THIRD_CAPTURE)
+
+    // Increase size when select star
+    if (stage == Ekos::Align::PAH_STAR_SELECT)
         align->zoomAlignView();
 
     sendResponse(commands[NEW_POLAR_STATE], polarState);
@@ -557,8 +545,10 @@ void Message::setPAHMessage(const QString &message)
     if (m_isConnected == false || m_Manager->getEkosStartingStatus() != EkosManager::EKOS_STATUS_SUCCESS)
         return;
 
+    QTextDocument doc;
+    doc.setHtml(message);
     QJsonObject polarState = {
-        {"message", message}
+        {"message", doc.toPlainText()}
     };
 
     sendResponse(commands[NEW_POLAR_STATE], polarState);
@@ -569,7 +559,12 @@ void Message::setPolarResults(QLineF correctionVector, QString polarError)
     if (m_isConnected == false || m_Manager->getEkosStartingStatus() != EkosManager::EKOS_STATUS_SUCCESS)
         return;
 
+    this->correctionVector = correctionVector;
+
+    QPointF center = 0.5 * correctionVector.p1() + 0.5 * correctionVector.p2();
     QJsonObject vector = {
+        {"center_x", center.x()},
+        {"center_y", center.y()},
         {"mag", correctionVector.length()},
         {"pa", correctionVector.angle()},
         {"error", polarError}
@@ -581,7 +576,6 @@ void Message::setPolarResults(QLineF correctionVector, QString polarError)
 
     sendResponse(commands[NEW_POLAR_STATE], polarState);
 }
-
 
 void Message::setPAHEnabled(bool enabled)
 {
@@ -744,10 +738,12 @@ void Message::sendStates()
         sendResponse(commands[ALIGN_SET_SETTINGS], m_Manager->alignModule()->getSettings());
 
         // Polar State
+        QTextDocument doc;
+        doc.setHtml(m_Manager->alignModule()->getPAHMessage());
         QJsonObject polarState = {
             {"stage", m_Manager->alignModule()->getPAHStage()},
             {"enabled", m_Manager->alignModule()->isPAHEnabled()},
-            {"message", m_Manager->alignModule()->getPAHMessage()},
+            {"message", doc.toPlainText()},
         };
         sendResponse(commands[NEW_POLAR_STATE], polarState);
 
@@ -765,4 +761,9 @@ void Message::sendEvent(const QString &message, KSNotification::EventType event)
     sendResponse(commands[NEW_NOTIFICATION], newEvent);
 }
 
+void Message::setBoundingRect(QRect rect, QSize view)
+{
+    boundingRect = rect;
+    viewSize = view;
+}
 }

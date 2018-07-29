@@ -1,6 +1,6 @@
 <!DOCTYPE kpartgui SYSTEM "kpartgui.dtd">
 
-<kpartgui name="KStars" version="6">
+<kpartgui name="KStars" version="7">
 <MenuBar noMerge="1">
         <Menu name="file" noMerge="1"><text>&amp;File</text>
                 <Action name="new_window" />
@@ -63,6 +63,7 @@
         <Menu name="devices" noMerge="1"><text>&amp;Devices</text>
                 <!-- <Action name="telescope_wizard" /> -->
                 <Action name="device_manager" />
+                <Action name="custom_drivers" />
                 <Separator />
                 <Action name="indi_cpl" />
         </Menu>

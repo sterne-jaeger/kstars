@@ -125,7 +125,12 @@ bool FITSData::loadFITS(const QString &inFilename, bool silent)
     {
         fits_close_file(fptr, &status);
 
-        if (m_isTemporary && autoRemoveTemporaryFITS)
+        // If current file is temporary AND
+        // Auto Remove Temporary File is Set AND
+        // New filename is different from existing filename
+        // THen remove it. We have to check for name since we cannot delete
+        // the same filename and try to open it below!
+        if (m_isTemporary && autoRemoveTemporaryFITS && inFilename != filename)
             QFile::remove(filename);
     }
 
@@ -1246,7 +1251,7 @@ int FITSData::findCannyStar(FITSData *data, const QRect &boundary)
     double FSum = 0, HF = 0, TF = 0;
     const double resolution = 1.0 / 20.0;
 
-    int cen_y = std::round(center->y);
+    int cen_y = qRound(center->y);
 
     double rightEdge = center->x + center->width / 2.0;
     double leftEdge  = center->x - center->width / 2.0;
@@ -1452,7 +1457,7 @@ int FITSData::findOneStar(const QRect &boundary)
     double FSum = 0, HF = 0, TF = 0, min = stats.min[0];
     const double resolution = 1.0 / 20.0;
 
-    int cen_y = std::round(center->y);
+    int cen_y = qRound(center->y);
 
     double rightEdge = center->x + center->width / 2.0;
     double leftEdge  = center->x - center->width / 2.0;

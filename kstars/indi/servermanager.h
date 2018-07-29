@@ -45,7 +45,7 @@ class ServerManager : public QObject
     const QString &getPort() { return port; }
 
     bool startDriver(DriverInfo *dv);
-    void stopDriver(DriverInfo *dv);
+    void stopDriver(DriverInfo *dv);    
 
     void setMode(ServerMode inMode) { mode = inMode; }
     ServerMode getMode() { return mode; }

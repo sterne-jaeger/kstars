@@ -126,7 +126,7 @@ bool ServerManager::start()
         emit started();
     }
     else
-        KMessageBox::error(0, i18n("INDI server failed to start: %1", serverProcess->errorString()));
+        KMessageBox::error(nullptr, i18n("INDI server failed to start: %1", serverProcess->errorString()));
 
     qCDebug(KSTARS_INDI) << "INDI Server Started? " << connected;
 
@@ -146,8 +146,8 @@ bool ServerManager::startDriver(DriverInfo *dv)
     QTextStream out(&indiFIFO);
 
     // Check for duplicates within existing clients
-    if (dv->getUniqueLabel().isEmpty() && dv->getTreeLabel().isEmpty() == false)
-        dv->setUniqueLabel(DriverManager::Instance()->getUniqueDeviceLabel(dv->getTreeLabel()));
+    if (dv->getUniqueLabel().isEmpty() && dv->getLabel().isEmpty() == false)
+        dv->setUniqueLabel(DriverManager::Instance()->getUniqueDeviceLabel(dv->getLabel()));
 
     // Check for duplicates within managed drivers
     if (dv->getUniqueLabel().isEmpty() == false)
@@ -182,35 +182,45 @@ bool ServerManager::startDriver(DriverInfo *dv)
         indiServerDir = QFileInfo(Options::indiServer()).dir().path();
 #endif
 
-    QStringList paths;
-    paths << "/usr/bin"
-          << "/usr/local/bin" << driversDir << indiServerDir;
-
-    if (QStandardPaths::findExecutable(dv->getDriver()).isEmpty())
+    if (dv->getRemoteHost().isEmpty() == false)
     {
-        if (QStandardPaths::findExecutable(dv->getDriver(), paths).isEmpty())
-        {
-            KMessageBox::error(nullptr, i18n("Driver %1 was not found on the system. Please make sure the package that "
-                                             "provides the '%1' binary is installed.",
-                                             dv->getDriver()));
-            return false;
-        }
+        QString driverString = dv->getName() + "@" + dv->getRemoteHost() + ":" + dv->getRemotePort();
+        qCDebug(KSTARS_INDI) << "Starting Remote INDI Driver" << driverString;
+        out << "start " << driverString << endl;
+        out.flush();
     }
+    else
+    {
+        QStringList paths;
+        paths << "/usr/bin"
+              << "/usr/local/bin" << driversDir << indiServerDir;
 
-    qCDebug(KSTARS_INDI) << "Starting INDI Driver " << dv->getDriver();
+        if (QStandardPaths::findExecutable(dv->getExecutable()).isEmpty())
+        {
+            if (QStandardPaths::findExecutable(dv->getExecutable(), paths).isEmpty())
+            {
+                KMessageBox::error(nullptr, i18n("Driver %1 was not found on the system. Please make sure the package that "
+                                                 "provides the '%1' binary is installed.",
+                                                 dv->getExecutable()));
+                return false;
+            }
+        }
 
-    out << "start " << dv->getDriver();
-    if (dv->getUniqueLabel().isEmpty() == false)
-        out << " -n \"" << dv->getUniqueLabel() << "\"";
-    if (dv->getSkeletonFile().isEmpty() == false)
-        out << " -s \"" << driversDir << QDir::separator() << dv->getSkeletonFile() << "\"";
-    out << endl;
+        qCDebug(KSTARS_INDI) << "Starting INDI Driver " << dv->getExecutable();
 
-    out.flush();
+        out << "start " << dv->getExecutable();
+        if (dv->getUniqueLabel().isEmpty() == false)
+            out << " -n \"" << dv->getUniqueLabel() << "\"";
+        if (dv->getSkeletonFile().isEmpty() == false)
+            out << " -s \"" << driversDir << QDir::separator() << dv->getSkeletonFile() << "\"";
+        out << endl;
 
-    dv->setServerState(true);
+        out.flush();
 
-    dv->setPort(port);
+        dv->setServerState(true);
+
+        dv->setPort(port);
+    }
 
     return true;
 }
@@ -221,12 +231,12 @@ void ServerManager::stopDriver(DriverInfo *dv)
 
     managedDrivers.removeOne(dv);
 
-    qCDebug(KSTARS_INDI) << "Stopping INDI Driver " << dv->getDriver();
+    qCDebug(KSTARS_INDI) << "Stopping INDI Driver " << dv->getExecutable();
 
     if (dv->getUniqueLabel().isEmpty() == false)
-        out << "stop " << dv->getDriver() << " -n \"" << dv->getUniqueLabel() << "\"" << endl;
+        out << "stop " << dv->getExecutable() << " -n \"" << dv->getUniqueLabel() << "\"" << endl;
     else
-        out << "stop " << dv->getDriver() << endl;
+        out << "stop " << dv->getExecutable() << endl;
 
     out.flush();
     dv->setServerState(false);
@@ -305,7 +315,7 @@ void ServerManager::processStandardError()
                 QString driverName = driver.left(driver.indexOf(':')).trimmed();
                 qCCritical(KSTARS_INDI) << "INDI driver " << driverName << " crashed!";
                 KMessageBox::information(
-                    0,
+                    nullptr,
                     i18n("KStars detected INDI driver %1 crashed. Please check INDI server log in the Device Manager.",
                          driverName));
                 break;
