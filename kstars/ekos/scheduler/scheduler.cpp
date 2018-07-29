@@ -31,8 +31,10 @@
 
 #include <ekos_scheduler_debug.h>
 
+#define BAD_SCORE               -1000
 #define MAX_FAILURE_ATTEMPTS    5
 #define UPDATE_PERIOD_MS        1000
+#define BAD_SCORE               -1000
 
 #define DEFAULT_CULMINATION_TIME    -60
 #define DEFAULT_MIN_ALTITUDE        15
@@ -385,7 +387,7 @@ void Scheduler::saveJob()
     /* FIXME: alter looping job priorities so that they are rescheduled later */
     foreach(SchedulerJob * job, *strategy->getAllJobs())
         if(SchedulerJob::FINISH_LOOP == job->getCompletionCondition())
-            appendLogText(i18n("Warning! Job '%1' has completion condition set to infinite repeat, other jobs may not execute.",job->getName()));
+            appendLogText(i18n("Warning: job '%1' has completion condition set to infinite repeat, other jobs may not execute.", job->getName()));
 
     if (nameEdit->text().isEmpty())
     {
@@ -405,6 +407,8 @@ void Scheduler::saveJob()
         appendLogText(i18n("Target coordinates are required."));
         return;
     }
+
+    /* FIXME: verify associated sequence when saving? */
 
     // Create or Update a scheduler job
     SchedulerJob *job = nullptr;
@@ -492,12 +496,12 @@ void Scheduler::saveJob()
     {
         /* Warn if appending a job which startup time doesn't allow proper score */
         if (strategy->calculateJobScore(job, job->getStartupTime()) < 0)
-            appendLogText(i18n("Warning! Job '%1' has startup time %1 resulting in a negative score, and will be marked invalid when processed.",
+            appendLogText(i18n("Warning: job '%1' has startup time %1 resulting in a negative score, and will be marked invalid when processed.",
                                job->getName(), job->getStartupTime().toString(job->getDateTimeDisplayFormat())));
 
         /* Warn if appending a job with a startup time that is in the past */
         if (job->getStartupTime() < KStarsData::Instance()->lt())
-            appendLogText(i18n("Warning! Job '%1' has fixed startup time %1 set in the past, and will be marked invalid when evaluated.",
+            appendLogText(i18n("Warning: job '%1' has fixed startup time %1 set in the past, and will be marked invalid when evaluated.",
                                job->getName(), job->getStartupTime().toString(job->getDateTimeDisplayFormat())));
     }
 
@@ -555,11 +559,11 @@ void Scheduler::saveJob()
         }
         else if(a_job->getName() == job->getName() && a_job->getSequenceFile() == job->getSequenceFile())
         {
-            appendLogText(i18n("Warning! Job '%1' at row %2 has a duplicate at row %3 (same target, same sequence file), "
-                               "the scheduler will consider the same storage for captures!",
+            appendLogText(i18n("Warning: job '%1' at row %2 has a duplicate at row %3 (same target, same sequence file), "
+                               "the scheduler will consider the same storage for captures.",
                                job->getName(), currentRow,
                                a_job->getNameCell()? a_job->getNameCell()->row()+1 : 0));
-            appendLogText(i18n("Warning! Job '%1' at row %2 requires a specific startup time or a different priority, "
+            appendLogText(i18n("Warning: job '%1' at row %2 requires a specific startup time or a different priority, "
                                "and a greater repeat count (or disable option 'Remember job progress')",
                                job->getName(), currentRow));
         }
@@ -639,7 +643,7 @@ void Scheduler::resetJobState(QModelIndex i)
 {
     if (state == SCHEDULER_RUNNING)
     {
-        appendLogText(i18n("Warning! You cannot reset a job while the scheduler is running."));
+        appendLogText(i18n("Warning: you cannot reset a job while the scheduler is running."));
         return;
     }
 
@@ -662,7 +666,7 @@ void Scheduler::loadJob(QModelIndex i)
 
     if (state == SCHEDULER_RUNNING)
     {
-        appendLogText(i18n("Warning! You cannot add or modify a job while the scheduler is running."));
+        appendLogText(i18n("Warning: you cannot add or modify a job while the scheduler is running."));
         return;
     }
 
@@ -994,14 +998,14 @@ void Scheduler::start()
     startupScriptURL = QUrl::fromUserInput(startupScript->text());
     if (startupScript->text().isEmpty() == false && startupScriptURL.isValid() == false)
     {
-        appendLogText(i18n("Warning! Startup script URL %1 is not valid.", startupScript->text()));
+        appendLogText(i18n("Warning: startup script URL %1 is not valid.", startupScript->text()));
         return;
     }
 
     shutdownScriptURL = QUrl::fromUserInput(shutdownScript->text());
     if (shutdownScript->text().isEmpty() == false && shutdownScriptURL.isValid() == false)
     {
-        appendLogText(i18n("Warning! Shutdown script URL %1 is not valid.", shutdownScript->text()));
+        appendLogText(i18n("Warning: shutdown script URL %1 is not valid.", shutdownScript->text()));
         return;
     }
 
@@ -1308,11 +1312,11 @@ void Scheduler::checkWeather()
                 break;
 
             case IPS_BUSY:
-                statusString = i18n("Warning! Weather conditions are in the WARNING zone.");
+                statusString = i18n("Warning: weather conditions are in the WARNING zone.");
                 break;
 
             case IPS_ALERT:
-                statusString = i18n("Caution! Weather conditions are in the DANGER zone!");
+                statusString = i18n("Caution: weather conditions are in the DANGER zone!");
                 break;
 
             default:
@@ -1923,7 +1927,7 @@ bool Scheduler::checkParkWaitState()
 
 void Scheduler::executeScript(const QString &filename)
 {
-    appendLogText(i18n("Executing script %1 ...", filename));
+    appendLogText(i18n("Executing script %1...", filename));
 
     connect(&scriptProcess, SIGNAL(readyReadStandardOutput()), this, SLOT(readProcessOutput()));
 
@@ -2090,6 +2094,9 @@ void Scheduler::checkJobStage()
         {
             appendLogText(i18n("Job '%1' reached completion time %2, stopping.", currentJob->getName(),
                                currentJob->getCompletionTime().toString(currentJob->getDateTimeDisplayFormat())));
+            currentJob->setState(SchedulerJob::JOB_ABORTED);
+            stopCurrentJobAction();
+            stopGuiding();
             findNextJob();
             return;
         }
@@ -2189,7 +2196,7 @@ void Scheduler::checkJobStage()
 
             if (slewStatus.error().type() == QDBusError::UnknownObject)
             {
-                appendLogText(i18n("Warning! Job '%1' lost connection to INDI while slewing, marking aborted.", currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' lost connection to INDI while slewing, marking aborted.", currentJob->getName()));
                 currentJob->setState(SchedulerJob::JOB_ABORTED);
                 checkShutdownState();
                 return;
@@ -2206,14 +2213,14 @@ void Scheduler::checkJobStage()
             }
             else if (slewStatus.value() == IPS_ALERT)
             {
-                appendLogText(i18n("Warning! Job '%1' slew failed, marking terminated due to errors.", currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' slew failed, marking terminated due to errors.", currentJob->getName()));
                 currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                 findNextJob();
             }
             else if (slewStatus.value() == IPS_IDLE)
             {
-                appendLogText(i18n("Warning! Job '%1' found not slewing, restarting.", currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' found not slewing, restarting.", currentJob->getName()));
                 currentJob->setStage(SchedulerJob::STAGE_IDLE);
 
                 getNextAction();
@@ -2227,7 +2234,7 @@ void Scheduler::checkJobStage()
 
             if (focusReply.error().type() == QDBusError::UnknownObject)
             {
-                appendLogText(i18n("Warning! Job '%1' lost connection to INDI server while focusing, marking aborted.", currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' lost connection to INDI server while focusing, marking aborted.", currentJob->getName()));
                 currentJob->setState(SchedulerJob::JOB_ABORTED);
                 checkShutdownState();
                 return;
@@ -2250,7 +2257,7 @@ void Scheduler::checkJobStage()
             }
             else if (focusStatus == Ekos::FOCUS_FAILED || focusStatus == Ekos::FOCUS_ABORTED)
             {
-                appendLogText(i18n("Warning! Job '%1' focusing failed.", currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' focusing failed.", currentJob->getName()));
 
                 if (focusFailureCount++ < MAX_FAILURE_ATTEMPTS)
                 {
@@ -2262,7 +2269,7 @@ void Scheduler::checkJobStage()
                 }
                 else
                 {
-                    appendLogText(i18n("Warning! Job '%1' focusing procedure failed, marking terminated due to errors.", currentJob->getName()));
+                    appendLogText(i18n("Warning: job '%1' focusing procedure failed, marking terminated due to errors.", currentJob->getName()));
                     currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                     findNextJob();
@@ -2287,7 +2294,7 @@ void Scheduler::checkJobStage()
 
             if (alignReply.error().type() == QDBusError::UnknownObject)
             {
-                appendLogText(i18n("Warning! Job '%1' lost connection to INDI server while aligning, marking aborted.", currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' lost connection to INDI server while aligning, marking aborted.", currentJob->getName()));
                 currentJob->setState(SchedulerJob::JOB_ABORTED);
                 checkShutdownState();
                 return;
@@ -2306,13 +2313,13 @@ void Scheduler::checkJobStage()
             }
             else if (alignStatus == Ekos::ALIGN_FAILED || alignStatus == Ekos::ALIGN_ABORTED)
             {
-                appendLogText(i18n("Warning! Job '%1' alignment failed.", currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' alignment failed.", currentJob->getName()));
 
                 if (alignFailureCount++ < MAX_FAILURE_ATTEMPTS)
                 {
                     if (Options::resetMountModelOnAlignFail() && MAX_FAILURE_ATTEMPTS-1 < alignFailureCount)
                     {
-                        appendLogText(i18n("Warning! Job '%1' forcing mount model reset after failing alignment #%2.", currentJob->getName(), alignFailureCount));
+                        appendLogText(i18n("Warning: job '%1' forcing mount model reset after failing alignment #%2.", currentJob->getName(), alignFailureCount));
                         mountInterface->call(QDBus::AutoDetect, "resetModel");
                     }
                     appendLogText(i18n("Restarting %1 alignment procedure...", currentJob->getName()));
@@ -2320,7 +2327,7 @@ void Scheduler::checkJobStage()
                 }
                 else
                 {
-                    appendLogText(i18n("Warning! Job '%1' alignment procedure failed, aborting job.", currentJob->getName()));
+                    appendLogText(i18n("Warning: job '%1' alignment procedure failed, aborting job.", currentJob->getName()));
                     currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                     findNextJob();
@@ -2345,7 +2352,7 @@ void Scheduler::checkJobStage()
 
             if (slewStatus.error().type() == QDBusError::UnknownObject)
             {
-                appendLogText(i18n("Warning! Job '%1' lost connection to INDI server while reslewing, marking aborted.",currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' lost connection to INDI server while reslewing, marking aborted.",currentJob->getName()));
                 currentJob->setState(SchedulerJob::JOB_ABORTED);
                 checkShutdownState();
             }
@@ -2357,14 +2364,14 @@ void Scheduler::checkJobStage()
             }
             else if (slewStatus.value() == IPS_ALERT)
             {
-                appendLogText(i18n("Warning! Job '%1' repositioning failed, marking terminated due to errors.", currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' repositioning failed, marking terminated due to errors.", currentJob->getName()));
                 currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                 findNextJob();
             }
             else if (slewStatus.value() == IPS_IDLE)
             {
-                appendLogText(i18n("Warning! Job '%1' found not repositioning, restarting.", currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' found not repositioning, restarting.", currentJob->getName()));
                 currentJob->setStage(SchedulerJob::STAGE_IDLE);
 
                 getNextAction();
@@ -2380,7 +2387,7 @@ void Scheduler::checkJobStage()
 
             if (guideReply.error().type() == QDBusError::UnknownObject)
             {
-                appendLogText(i18n("Warning! Job '%1' lost connection to INDI server while guiding, marking aborted.",currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' lost connection to INDI server while guiding, marking aborted.",currentJob->getName()));
                 currentJob->setState(SchedulerJob::JOB_ABORTED);
                 checkShutdownState();
                 return;
@@ -2400,9 +2407,9 @@ void Scheduler::checkJobStage()
             else if (guideStatus == Ekos::GUIDE_CALIBRATION_ERROR || guideStatus == Ekos::GUIDE_ABORTED)
             {
                 if (guideStatus == Ekos::GUIDE_ABORTED)
-                    appendLogText(i18n("Warning! Job '%1' guiding failed.", currentJob->getName()));
+                    appendLogText(i18n("Warning: job '%1' guiding failed.", currentJob->getName()));
                 else
-                    appendLogText(i18n("Warning! Job '%1' calibration failed.", currentJob->getName()));
+                    appendLogText(i18n("Warning: job '%1' calibration failed.", currentJob->getName()));
 
                 if (guideFailureCount++ < MAX_FAILURE_ATTEMPTS)
                 {
@@ -2424,7 +2431,7 @@ void Scheduler::checkJobStage()
                 }
                 else
                 {
-                    appendLogText(i18n("Warning! Job '%1' guiding procedure failed, marking terminated due to errors.", currentJob->getName()));
+                    appendLogText(i18n("Warning: job '%1' guiding procedure failed, marking terminated due to errors.", currentJob->getName()));
                     currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                     findNextJob();
@@ -2439,13 +2446,13 @@ void Scheduler::checkJobStage()
 
             if (captureReply.error().type() == QDBusError::UnknownObject)
             {
-                appendLogText(i18n("Warning! Job '%1' lost connection to INDI server while capturing, marking aborted.",currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' lost connection to INDI server while capturing, marking aborted.",currentJob->getName()));
                 currentJob->setState(SchedulerJob::JOB_ABORTED);
                 checkShutdownState();
             }
             else if (captureReply.value().toStdString() == "Aborted" || captureReply.value().toStdString() == "Error")
             {
-                appendLogText(i18n("Warning! Job '%1' failed to capture target (%2).", currentJob->getName(), captureReply.value()));
+                appendLogText(i18n("Warning: job '%1' failed to capture target (%2).", currentJob->getName(), captureReply.value()));
 
                 if (captureFailureCount++ < MAX_FAILURE_ATTEMPTS)
                 {
@@ -2468,13 +2475,13 @@ void Scheduler::checkJobStage()
                     }
 
                     /* FIXME: it's not clear whether it is actually possible to continue capturing when capture fails this way */
-                    appendLogText(i18n("Warning! Job '%1' failed its capture procedure, restarting capture.", currentJob->getName()));
+                    appendLogText(i18n("Warning: job '%1' failed its capture procedure, restarting capture.", currentJob->getName()));
                     startCapture();
                 }
                 else
                 {
                     /* FIXME: it's not clear whether this situation can be recovered at all */
-                    appendLogText(i18n("Warning! Job '%1' failed its capture procedure, marking aborted.", currentJob->getName()));
+                    appendLogText(i18n("Warning: job '%1' failed its capture procedure, marking aborted.", currentJob->getName()));
                     currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                     findNextJob();
@@ -3063,7 +3070,7 @@ void Scheduler::startSlew()
 
     if (isMountParked())
     {
-        appendLogText(i18n("Warning! Job '%1' found mount parked unexpectedly, attempting to unpark.", currentJob->getName()));
+        appendLogText(i18n("Warning: job '%1' found mount parked unexpectedly, attempting to unpark.", currentJob->getName()));
         startupState = STARTUP_UNPARK_MOUNT;
         unParkMount();
         return;
@@ -3085,7 +3092,7 @@ void Scheduler::startSlew()
     if (slewModeReply.error().type() != QDBusError::NoError)
     {
         /* FIXME: manage error */
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' slew request received DBUS error: %2").arg(currentJob->getName(), QDBusError::errorString(slewModeReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: job '%1' slew request received DBUS error: %2").arg(currentJob->getName(), QDBusError::errorString(slewModeReply.error().type()));
         return;
     }
 
@@ -3114,13 +3121,13 @@ void Scheduler::startFocusing()
 
     if (focusModeReply.error().type() != QDBusError::NoError)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' canAutoFocus request received DBUS error: %2").arg(currentJob->getName(), QDBusError::errorString(focusModeReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: job '%1' canAutoFocus request received DBUS error: %2").arg(currentJob->getName(), QDBusError::errorString(focusModeReply.error().type()));
         return;
     }
 
     if (focusModeReply.value() == false)
     {
-        appendLogText(i18n("Warning! Job '%1' is unable to proceed with autofocus, not supported.", currentJob->getName()));
+        appendLogText(i18n("Warning: job '%1' is unable to proceed with autofocus, not supported.", currentJob->getName()));
         currentJob->setStepPipeline(
             static_cast<SchedulerJob::StepPipeline>(currentJob->getStepPipeline() & ~SchedulerJob::USE_FOCUS));
         currentJob->setStage(SchedulerJob::STAGE_FOCUS_COMPLETE);
@@ -3136,7 +3143,7 @@ void Scheduler::startFocusing()
     // We always need to reset frame first
     if ((reply = focusInterface->call(QDBus::AutoDetect, "resetFrame")).type() == QDBusMessage::ErrorMessage)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' resetFrame request received DBUS error: %2").arg(currentJob->getName(), reply.errorMessage());
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: job '%1' resetFrame request received DBUS error: %2").arg(currentJob->getName(), reply.errorMessage());
         return;
     }
 
@@ -3148,7 +3155,7 @@ void Scheduler::startFocusing()
         if ((reply = focusInterface->callWithArgumentList(QDBus::AutoDetect, "setAutoStarEnabled", autoStar)).type() ==
             QDBusMessage::ErrorMessage)
         {
-            qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' setAutoFocusStar request received DBUS error: %1").arg(currentJob->getName(), reply.errorMessage());
+            qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: job '%1' setAutoFocusStar request received DBUS error: %1").arg(currentJob->getName(), reply.errorMessage());
             return;
         }
     }
@@ -3156,7 +3163,7 @@ void Scheduler::startFocusing()
     // Start auto-focus
     if ((reply = focusInterface->call(QDBus::AutoDetect, "start")).type() == QDBusMessage::ErrorMessage)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' startFocus request received DBUS error: %2").arg(currentJob->getName(), reply.errorMessage());
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: job '%1' startFocus request received DBUS error: %2").arg(currentJob->getName(), reply.errorMessage());
         return;
     }
 
@@ -3354,7 +3361,7 @@ void Scheduler::startAstrometry()
         if ((reply = alignInterface->callWithArgumentList(QDBus::AutoDetect, "loadAndSlew", solveArgs)).type() ==
             QDBusMessage::ErrorMessage)
         {
-            qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' loadAndSlew request received DBUS error: %2").arg(currentJob->getName(), reply.errorMessage());
+            qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: job '%1' loadAndSlew request received DBUS error: %2").arg(currentJob->getName(), reply.errorMessage());
             return;
         }
 
@@ -3365,7 +3372,7 @@ void Scheduler::startAstrometry()
     {
         if ((reply = alignInterface->call(QDBus::AutoDetect, "captureAndSolve")).type() == QDBusMessage::ErrorMessage)
         {
-            qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' captureAndSolve request received DBUS error: %2").arg(currentJob->getName(), reply.errorMessage());
+            qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: job '%1' captureAndSolve request received DBUS error: %2").arg(currentJob->getName(), reply.errorMessage());
             return;
         }
 
@@ -3427,7 +3434,7 @@ void Scheduler::startCapture()
         if ((reply = captureInterface->callWithArgumentList(QDBus::AutoDetect, "setCapturedFramesMap", dbusargs)).type() ==
             QDBusMessage::ErrorMessage)
         {
-            qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Job '%1' setCapturedFramesCount request received DBUS error: %1").arg(currentJob->getName(), reply.errorMessage());
+            qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: job '%1' setCapturedFramesCount request received DBUS error: %1").arg(currentJob->getName(), reply.errorMessage());
             return;
         }
     }
@@ -3536,7 +3543,7 @@ void Scheduler::unParkMount()
 
     if (mountReply.error().type() != QDBusError::NoError)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Mount getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(mountReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: mount getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(mountReply.error().type()));
         status = Mount::PARKING_ERROR;
     }
 
@@ -3576,7 +3583,7 @@ void Scheduler::checkMountParkingStatus()
 
     if (mountReply.error().type() != QDBusError::NoError)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Mount getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(mountReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: mount getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(mountReply.error().type()));
         status = Mount::PARKING_ERROR;
     }
 
@@ -3653,7 +3660,7 @@ bool Scheduler::isMountParked()
 
     if (mountReply.error().type() != QDBusError::NoError)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Mount getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(mountReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: mount getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(mountReply.error().type()));
         status = Mount::PARKING_ERROR;
     }
 
@@ -3667,7 +3674,7 @@ void Scheduler::parkDome()
 
     if (domeReply.error().type() != QDBusError::NoError)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Dome getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(domeReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: dome getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(domeReply.error().type()));
         status = Dome::PARKING_ERROR;
     }
 
@@ -3693,7 +3700,7 @@ void Scheduler::unParkDome()
 
     if (domeReply.error().type() != QDBusError::NoError)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Dome getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(domeReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: dome getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(domeReply.error().type()));
         status = Dome::PARKING_ERROR;
     }
 
@@ -3722,7 +3729,7 @@ void Scheduler::checkDomeParkingStatus()
 
     if (domeReply.error().type() != QDBusError::NoError)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Dome getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(domeReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: dome getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(domeReply.error().type()));
         status = Dome::PARKING_ERROR;
     }
 
@@ -3790,7 +3797,7 @@ bool Scheduler::isDomeParked()
 
     if (domeReply.error().type() != QDBusError::NoError)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Dome getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(domeReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: dome getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(domeReply.error().type()));
         status = Dome::PARKING_ERROR;
     }
 
@@ -3804,7 +3811,7 @@ void Scheduler::parkCap()
 
     if (capReply.error().type() != QDBusError::NoError)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Cap getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(capReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: cap getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(capReply.error().type()));
         status = DustCap::PARKING_ERROR;
     }
 
@@ -3830,7 +3837,7 @@ void Scheduler::unParkCap()
 
     if (capReply.error().type() != QDBusError::NoError)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Cap getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(capReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: cap getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(capReply.error().type()));
         status = DustCap::PARKING_ERROR;
     }
 
@@ -3859,7 +3866,7 @@ void Scheduler::checkCapParkingStatus()
 
     if (capReply.error().type() != QDBusError::NoError)
     {
-        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning! Cap getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(capReply.error().type()));
+        qCCritical(KSTARS_EKOS_SCHEDULER) << QString("Warning: cap getParkingStatus request received DBUS error: %1").arg(QDBusError::errorString(capReply.error().type()));
         status = DustCap::PARKING_ERROR;
     }
 
@@ -3944,13 +3951,13 @@ void Scheduler::startMosaicTool()
 
     if (raOk == false)
     {
-        appendLogText(i18n("Warning! RA value %1 is invalid.", raBox->text()));
+        appendLogText(i18n("Warning: RA value %1 is invalid.", raBox->text()));
         return;
     }
 
     if (decOk == false)
     {
-        appendLogText(i18n("Warning! DEC value %1 is invalid.", decBox->text()));
+        appendLogText(i18n("Warning: DEC value %1 is invalid.", decBox->text()));
         return;
     }
 
@@ -4139,7 +4146,7 @@ void Scheduler::checkTwilightWarning(bool enabled)
 
     if (KMessageBox::warningContinueCancel(
             NULL,
-            i18n("Warning! Turning off astronomial twilight check may cause the observatory "
+            i18n("Turning off astronomial twilight check may cause the observatory "
                  "to run during daylight. This can cause irreversible damage to your equipment!"),
             i18n("Astronomial Twilight Warning"), KStandardGuiItem::cont(), KStandardGuiItem::cancel(),
             "astronomical_twilight_warning") == KMessageBox::Cancel)
@@ -4178,7 +4185,7 @@ void Scheduler::runStartupProcedure()
         if (KMessageBox::questionYesNo(
                 nullptr, i18n("Are you sure you want to execute the startup procedure manually?")) == KMessageBox::Yes)
         {
-            appendLogText(i18n("Warning! Executing startup procedure manually..."));
+            appendLogText(i18n("Warning: executing startup procedure manually..."));
             startupB->setIcon(
                 QIcon::fromTheme("media-playback-stop"));
             startupState = STARTUP_IDLE;
@@ -4260,7 +4267,7 @@ void Scheduler::runShutdownProcedure()
         if (KMessageBox::questionYesNo(
                 nullptr, i18n("Are you sure you want to execute the shutdown procedure manually?")) == KMessageBox::Yes)
         {
-            appendLogText(i18n("Warning! Executing shutdown procedure manually..."));
+            appendLogText(i18n("Warning: executing shutdown procedure manually..."));
             shutdownB->setIcon(
                 QIcon::fromTheme("media-playback-stop"));
             shutdownState = SHUTDOWN_IDLE;
