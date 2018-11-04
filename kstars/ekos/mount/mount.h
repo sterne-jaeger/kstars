@@ -343,6 +343,7 @@ private slots:
     ISD::Telescope *currentTelescope = nullptr;
     ISD::GDInterface *currentGPS = nullptr;
     QStringList m_LogText;
+    SkyPoint *currentTarget = nullptr;
     SkyPoint telescopeCoord;
     QString lastNotificationMessage;
     QTimer updateTimer;

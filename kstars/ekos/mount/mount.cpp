@@ -817,6 +817,9 @@ bool Mount::slew(double RA, double DEC)
 
     setInitialHA(HA);
 
+    SkyPoint target(RA, DEC);
+    currentTarget = &target;
+
     return currentTelescope->Slew(RA, DEC);
 }
 
