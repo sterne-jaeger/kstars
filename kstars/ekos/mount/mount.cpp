@@ -52,6 +52,12 @@ Mount::Mount()
 
     new MountAdaptor(this);
     QDBusConnection::sessionBus().registerObject("/KStars/Ekos/Mount", this);
+    // Set up DBus interfaces
+    QPointer<QDBusInterface> ekosInterface = new QDBusInterface("org.kde.kstars", "/KStars/Ekos", "org.kde.kstars.Ekos",
+                                                                QDBusConnection::sessionBus(), this);
+
+    // Connecting DBus signals
+    connect(ekosInterface, SIGNAL(newModule(QString)), this, SLOT(registerNewModule(QString)));
 
     currentTelescope = nullptr;
 
@@ -329,6 +335,17 @@ void Mount::syncTelescopeInfo()
     if (tvp)
         scopeConfigNameEdit->setText(tvp->tp[0].text);
 }
+
+void Mount::registerNewModule(const QString &name)
+{
+    if (name == "Capture")
+    {
+        captureInterface = new QDBusInterface("org.kde.kstars", "/KStars/Ekos/Capture", "org.kde.kstars.Ekos.Capture",
+                                              QDBusConnection::sessionBus(), this);
+    }
+
+}
+
 
 void Mount::updateText(ITextVectorProperty *tvp)
 {
@@ -793,6 +810,13 @@ bool Mount::slew(double RA, double DEC)
     if (currentTelescope == nullptr || currentTelescope->isConnected() == false)
         return false;
 
+    dms lst = KStarsData::Instance()->geo()->GSTtoLST(KStarsData::Instance()->clock()->utc().gst());
+    double HA = lst.Hours() - RA;
+    if (HA > 12.0)
+        HA -= 24.0;
+
+    setInitialHA(HA);
+
     return currentTelescope->Slew(RA, DEC);
 }
 
@@ -868,7 +892,7 @@ double Mount::hourAngle()
     double HA = ha.Hours();
 
     if (HA > 12.0)
-        return (24 - HA);
+        return (HA - 24.0);
     else
         return HA;
 }

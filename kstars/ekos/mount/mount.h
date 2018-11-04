@@ -42,9 +42,9 @@ class Mount : public QWidget, public Ui::Mount
     Q_PROPERTY(QList<double> horizontalCoords READ horizontalCoords)
     Q_PROPERTY(QList<double> telescopeInfo READ telescopeInfo WRITE setTelescopeInfo)
     Q_PROPERTY(double hourAngle READ hourAngle)
+    Q_PROPERTY(double initialHA READ getInitialHA)
     Q_PROPERTY(int slewRate READ slewRate WRITE setSlewRate)
     Q_PROPERTY(int slewStatus READ slewStatus)
-    Q_PROPERTY(QStringList logText READ logText NOTIFY newLog)
     Q_PROPERTY(bool canPark READ canPark)
 
   public:
@@ -155,6 +155,14 @@ class Mount : public QWidget, public Ui::Mount
          */
     Q_SCRIPTABLE double hourAngle();
 
+    double initialHA;
+    /** DBUS interface function.
+         * Get the hour angle of that time the mount has slewed to the current position.
+         */
+    Q_SCRIPTABLE double getInitialHA() {return initialHA; } ;
+
+    Q_SCRIPTABLE void setInitialHA(double ha) { initialHA = ha; } ;
+
     /** DBUS interface function.
          * Aborts the mount motion
          * @return true if the command is sent successfully, false otherwise.
@@ -230,7 +238,7 @@ class Mount : public QWidget, public Ui::Mount
     // Get list of scopes
     QJsonArray getScopes() const;
 
-  public slots:
+public slots:
 
     /**
          * @brief syncTelescopeInfo Update telescope information to reflect any property changes
@@ -307,6 +315,13 @@ class Mount : public QWidget, public Ui::Mount
 
 private slots:
 
+    /**
+     * @brief registerNewModule Register an Ekos module as it arrives via DBus
+     * and create the appropriate DBus interface to communicate with it.
+     * @param name of module
+     */
+    void registerNewModule(const QString &name);
+
     void startParkTimer();
     void stopParkTimer();
     void startAutoPark();
@@ -322,6 +337,8 @@ private slots:
 
   private:
     void syncGPS();
+
+    QPointer<QDBusInterface> captureInterface { nullptr };
 
     ISD::Telescope *currentTelescope = nullptr;
     ISD::GDInterface *currentGPS = nullptr;

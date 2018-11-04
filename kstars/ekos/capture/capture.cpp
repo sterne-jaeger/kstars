@@ -52,6 +52,11 @@ Capture::Capture()
 
     new CaptureAdaptor(this);
     QDBusConnection::sessionBus().registerObject("/KStars/Ekos/Capture", this);
+    QPointer<QDBusInterface> ekosInterface = new QDBusInterface("org.kde.kstars", "/KStars/Ekos", "org.kde.kstars.Ekos",
+                                                                QDBusConnection::sessionBus(), this);
+
+    // Connecting DBus signals
+    connect(ekosInterface, SIGNAL(newModule(QString)), this, SLOT(registerNewModule(QString)));
 
     KStarsData::Instance()->userdb()->GetAllDSLRInfos(DSLRInfos);
 
@@ -348,6 +353,19 @@ void Capture::toggleSequence()
     }
 }
 
+
+void Capture::registerNewModule(const QString &name)
+{
+    if (name == "Mount")
+    {
+        mountInterface = new QDBusInterface("org.kde.kstars", "/KStars/Ekos/Mount", "org.kde.kstars.Ekos.Mount",
+                                              QDBusConnection::sessionBus(), this);
+    }
+
+}
+
+
+
 void Capture::start()
 {
     if (darkSubCheck->isChecked())
@@ -427,8 +445,6 @@ void Capture::start()
     // Refocus timer should not be reset on deviation error
     if (m_DeviationDetected == false && m_State != CAPTURE_SUSPENDED)
     {
-        initialHA         = getCurrentHA();
-        qCDebug(KSTARS_EKOS_CAPTURE) << "Initial hour angle:" << initialHA;
         meridianFlipStage = MF_NONE;
         // Record initial mount coordinates that we may use later to perform a meridian flip
         if (currentTelescope)
@@ -2754,7 +2770,6 @@ void Capture::setGuideDeviation(double delta_ra, double delta_dec)
         // otherwise we can for deviation RMS
         if (guideDeviationCheck->isChecked() == false || deviation_rms < guideDeviation->value())
         {
-            initialHA = getCurrentHA();
             appendLogText(i18n("Post meridian flip calibration completed successfully."));
             resumeSequence();
             // N.B. Set meridian flip stage AFTER resumeSequence() always
@@ -4032,9 +4047,6 @@ void Capture::processTelescopeNumber(INumberVectorProperty *nvp)
         if (dome && dome->isMoving())
             break;
 
-        // We are at a new initialHA
-        initialHA = getCurrentHA();
-
         appendLogText(i18n("Telescope completed the meridian flip."));
 
         //KNotification::event(QLatin1String("MeridianFlipCompleted"), i18n("Meridian flip is successfully completed"));
@@ -4088,33 +4100,36 @@ void Capture::checkGuidingAfterFlip()
 
 double Capture::getCurrentHA()
 {
-    double currentRA, currentDEC;
-
-    if (currentTelescope == nullptr)
-        return Ekos::INVALID_VALUE;
-
-    if (currentTelescope->getEqCoords(&currentRA, &currentDEC) == false)
-    {
-        appendLogText(i18n("Failed to retrieve telescope coordinates. Unable to calculate telescope's hour angle."));
-        return Ekos::INVALID_VALUE;
-    }
-
-    /* Edge case: undefined HA at poles */
-    if (90.0f == currentDEC || -90.0f == currentDEC)
-        return Ekos::INVALID_VALUE;
-
-    dms lst = KStarsData::Instance()->geo()->GSTtoLST(KStarsData::Instance()->clock()->utc().gst());
-
-    dms ha = (lst - dms(currentRA * 15.0));
-    double HA = ha.Hours();
-    if (HA > 12)
-        HA -= 24;
-    return HA;
+    QVariant HA = mountInterface->property("hourAngle");
+    return HA.toDouble();
 }
+
+double Capture::getInitialHA()
+{
+    QVariant HA = mountInterface->property("initialHA");
+    return HA.toDouble();
+}
+
+bool Capture::slew(const SkyPoint target)
+{
+    QList<QVariant> telescopeSlew;
+    telescopeSlew.append(target.ra().Hours());
+    telescopeSlew.append(target.dec().Degrees());
+
+    QDBusReply<bool> const slewModeReply = mountInterface->callWithArgumentList(QDBus::AutoDetect, "slew", telescopeSlew);
+
+    if (slewModeReply.error().type() == QDBusError::NoError)
+        return true;
+
+    // error occured
+    qCCritical(KSTARS_EKOS_CAPTURE) << QString("Warning: slew request received DBUS error: %1").arg(QDBusError::errorString(slewModeReply.error().type()));
+    return false;
+}
+
 
 bool Capture::checkMeridianFlip()
 {
-    if (currentTelescope == nullptr || meridianCheck->isChecked() == false || initialHA > 0)
+    if (currentTelescope == nullptr || meridianCheck->isChecked() == false || getInitialHA() > 0)
         return false;
 
     double currentHA = getCurrentHA();
@@ -4145,9 +4160,9 @@ bool Capture::checkMeridianFlip()
         if ((guideState == GUIDE_GUIDING) || isInSequenceFocus)
             emit meridianFlipStarted();
 
-        //double dec;
-        //currentTelescope->getEqCoords(&initialRA, &dec);
-        currentTelescope->Slew(&initialMountCoords);
+        // FIXME: handle result
+        slew(initialMountCoords);
+
         secondsLabel->setText(i18n("Meridian Flip..."));
 
         retries = 0;
@@ -4179,10 +4194,7 @@ void Capture::checkMeridianFlipTimeout()
         }
         else
         {
-            //double dec;
-            //currentTelescope->getEqCoords(&initialRA, &dec);
-            //currentTelescope->Slew(initialRA, dec);
-            currentTelescope->Slew(&initialMountCoords);
+            slew(initialMountCoords);
             appendLogText(i18n("Retrying meridian flip again..."));
         }
     }
