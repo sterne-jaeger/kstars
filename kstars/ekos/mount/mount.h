@@ -17,6 +17,7 @@
 #include "indi/indistd.h"
 #include "indi/indifocuser.h"
 #include "indi/inditelescope.h"
+#include "dbusskypoint.h"
 
 class QQuickView;
 class QQuickItem;
@@ -29,6 +30,7 @@ namespace Ekos
  *@author Jasem Mutlaq
  *@version 1.3
  */
+
 class Mount : public QWidget, public Ui::Mount
 {
     Q_OBJECT
@@ -41,6 +43,7 @@ class Mount : public QWidget, public Ui::Mount
     Q_PROPERTY(QList<double> equatorialCoords READ equatorialCoords)
     Q_PROPERTY(QList<double> horizontalCoords READ horizontalCoords)
     Q_PROPERTY(QList<double> telescopeInfo READ telescopeInfo WRITE setTelescopeInfo)
+    Q_PROPERTY(DBusSkyPoint currentTarget READ getCurrentTarget)
     Q_PROPERTY(double hourAngle READ hourAngle)
     Q_PROPERTY(double initialHA READ getInitialHA)
     Q_PROPERTY(int slewRate READ slewRate WRITE setSlewRate)
@@ -151,6 +154,11 @@ class Mount : public QWidget, public Ui::Mount
     Q_SCRIPTABLE QList<double> horizontalCoords();
 
     /** DBUS interface function.
+         * Get Horizontal coords. An array of doubles is returned. First element is RA in hours. Second elements is DEC in degrees.
+         */
+    Q_SCRIPTABLE DBusSkyPoint getCurrentTarget();
+
+    /** DBUS interface function.
          * Get mount hour angle in hours (-12 to +12).
          */
     Q_SCRIPTABLE double hourAngle();
@@ -159,9 +167,9 @@ class Mount : public QWidget, public Ui::Mount
     /** DBUS interface function.
          * Get the hour angle of that time the mount has slewed to the current position.
          */
-    Q_SCRIPTABLE double getInitialHA() {return initialHA; } ;
+    Q_SCRIPTABLE double getInitialHA() {return initialHA; }
 
-    Q_SCRIPTABLE void setInitialHA(double ha) { initialHA = ha; } ;
+    Q_SCRIPTABLE void setInitialHA(double ha) { initialHA = ha; }
 
     /** DBUS interface function.
          * Aborts the mount motion
@@ -343,7 +351,7 @@ private slots:
     ISD::Telescope *currentTelescope = nullptr;
     ISD::GDInterface *currentGPS = nullptr;
     QStringList m_LogText;
-    SkyPoint *currentTarget = nullptr;
+    SkyPoint currentTargetPosition;
     SkyPoint telescopeCoord;
     QString lastNotificationMessage;
     QTimer updateTimer;
@@ -366,5 +374,6 @@ private slots:
                *m_Unpark = nullptr, *m_statusText = nullptr, *m_J2000Check = nullptr, *m_JNowCheck=nullptr;
 };
 }
+
 
 #endif // Mount

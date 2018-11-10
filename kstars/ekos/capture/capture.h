@@ -311,7 +311,9 @@ class Capture : public QWidget, public Ui::Capture
      */
     void setSettings(const QJsonObject &settings);
 
-  public slots:
+    SkyPoint getInitialMountCoords() const;
+
+public slots:
 
     /** \addtogroup CaptureDBusInterface
          *  @{

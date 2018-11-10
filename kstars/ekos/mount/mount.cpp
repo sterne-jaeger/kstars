@@ -46,6 +46,7 @@ extern const char *libindi_strings_context;
 
 namespace Ekos
 {
+
 Mount::Mount()
 {
     setupUi(this);    
@@ -55,6 +56,7 @@ Mount::Mount()
     // Set up DBus interfaces
     QPointer<QDBusInterface> ekosInterface = new QDBusInterface("org.kde.kstars", "/KStars/Ekos", "org.kde.kstars.Ekos",
                                                                 QDBusConnection::sessionBus(), this);
+    qDBusRegisterMetaType<DBusSkyPoint>();
 
     // Connecting DBus signals
     connect(ekosInterface, SIGNAL(newModule(QString)), this, SLOT(registerNewModule(QString)));
@@ -817,11 +819,23 @@ bool Mount::slew(double RA, double DEC)
 
     setInitialHA(HA);
 
-    SkyPoint target(RA, DEC);
-    currentTarget = &target;
+    currentTargetPosition.setRA(RA);
+    currentTargetPosition.setDec(DEC);
 
     return currentTelescope->Slew(RA, DEC);
 }
+
+DBusSkyPoint Mount::getCurrentTarget()
+{
+    DBusSkyPoint target;
+
+    target.ra  = currentTargetPosition.ra().Hours();
+    target.dec = currentTargetPosition.dec().Degrees();
+
+    return target;
+}
+
+
 
 bool Mount::sync(const QString &RA, const QString &DEC)
 {

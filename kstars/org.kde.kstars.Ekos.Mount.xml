@@ -7,6 +7,9 @@
   <property name="altitudeLimits" type="(i)" access="readwrite">
     <annotation name="org.qtproject.QtDBus.QtTypeName" value="QList&lt;double&gt;"/>
   </property>
+  <property name="currentTarget" type="(dd)" access="read">
+    <annotation name="org.qtproject.QtDBus.QtTypeName" value="DBusSkyPoint"/>
+  </property>
   <property name="altitudeLimitsEnabled" type="b" access="readwrite"/>
   <property name="equatorialCoords" type="(i)" access="read">
     <annotation name="org.qtproject.QtDBus.QtTypeName" value="QList&lt;double&gt;"/>

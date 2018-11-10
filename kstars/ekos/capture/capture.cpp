@@ -453,18 +453,18 @@ void Capture::start()
             currentTelescope->getEqCoords(&initialRA, &initialDE);
             if (currentTelescope->isJ2000())
             {
-                initialMountCoords.setRA0(initialRA);
-                initialMountCoords.setDec0(initialDE);
-                initialMountCoords.apparentCoord(static_cast<long double>(J2000), KStars::Instance()->data()->ut().djd());
+                getInitialMountCoords().setRA0(initialRA);
+                getInitialMountCoords().setDec0(initialDE);
+                getInitialMountCoords().apparentCoord(static_cast<long double>(J2000), KStars::Instance()->data()->ut().djd());
             }
             else
             {
-                initialMountCoords.setRA(initialRA);
-                initialMountCoords.setDec(initialDE);
+                getInitialMountCoords().setRA(initialRA);
+                getInitialMountCoords().setDec(initialDE);
             }
 
-            qCDebug(KSTARS_EKOS_CAPTURE) << "Initial mount coordinates RA:" << initialMountCoords.ra().toHMSString()
-                                         << "DE:" << initialMountCoords.dec().toDMSString();
+            qCDebug(KSTARS_EKOS_CAPTURE) << "Initial mount coordinates RA:" << getInitialMountCoords().ra().toHMSString()
+                                         << "DE:" << getInitialMountCoords().dec().toDMSString();
         }
 
         // start timer to measure time until next forced refocus
@@ -2993,6 +2993,14 @@ void Capture::updateHFRThreshold()
     HFRPixels->setValue(median + (median * (Options::hFRThresholdPercentage() / 100.0)));
 }
 
+SkyPoint Capture::getInitialMountCoords() const
+{
+    QVariant const result = mountInterface->property("currentTarget");
+    DBusSkyPoint point = result.value<DBusSkyPoint>();
+    SkyPoint coords(point.ra, point.dec);
+    return coords;
+}
+
 int Capture::getTotalFramesCount(QString signature)
 {
     int  result = 0;
@@ -4026,7 +4034,7 @@ void Capture::processTelescopeNumber(INumberVectorProperty *nvp)
     {
         double ra, dec;
         currentTelescope->getEqCoords(&ra, &dec);
-        double diffRA = initialMountCoords.ra().Hours() - ra;
+        double diffRA = getInitialMountCoords().ra().Hours() - ra;
         // If the mount is actually flipping then we should see a difference in RA
         // which if it exceeded MF_RA_DIFF_LIMIT (4 hours) then we consider it to be
         // undertaking the flip. Otherwise, it's not flipping and let timeout takes care of
@@ -4161,7 +4169,7 @@ bool Capture::checkMeridianFlip()
             emit meridianFlipStarted();
 
         // FIXME: handle result
-        slew(initialMountCoords);
+        slew(getInitialMountCoords());
 
         secondsLabel->setText(i18n("Meridian Flip..."));
 
@@ -4194,7 +4202,7 @@ void Capture::checkMeridianFlipTimeout()
         }
         else
         {
-            slew(initialMountCoords);
+            slew(getInitialMountCoords());
             appendLogText(i18n("Retrying meridian flip again..."));
         }
     }
