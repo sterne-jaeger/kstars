@@ -825,6 +825,23 @@ bool Mount::slew(double RA, double DEC)
     return currentTelescope->Slew(RA, DEC);
 }
 
+bool Mount::executeMeridianFlip() {
+    if (getInitialHA() > 0)
+        // no meridian flip necessary
+        return false;
+
+    dms lst = KStarsData::Instance()->geo()->GSTtoLST(KStarsData::Instance()->clock()->utc().gst());
+    double HA = lst.Hours() - currentTargetPosition.ra().Hours();
+    if (HA > 12.0)
+        // no meridian flip necessary
+        return false;
+
+    // execute meridian flip
+    slew(currentTargetPosition.ra().Hours(), currentTargetPosition.dec().Degrees());
+    return true;
+
+}
+
 DBusSkyPoint Mount::getCurrentTarget()
 {
     DBusSkyPoint target;

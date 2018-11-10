@@ -54,6 +54,9 @@
     <method name="resetModel">
       <arg type="b" direction="out"/>
     </method>
+    <method name="executeMeridianFlip">
+      <arg type="b" direction="out"/>
+    </method>
     <signal name="newStatus">
         <arg name="status" type="(i)" direction="out"/>
         <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="ISD::Telescope::Status"/>

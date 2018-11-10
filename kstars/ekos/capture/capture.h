@@ -786,5 +786,8 @@ public slots:
 
     // Captured Frames Map
     SchedulerJob::CapturedFramesMap capturedFramesMap;
+
+    // Execute the meridian flip
+    bool executeMeridianFlip();
 };
 }

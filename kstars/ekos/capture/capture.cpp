@@ -446,27 +446,6 @@ void Capture::start()
     if (m_DeviationDetected == false && m_State != CAPTURE_SUSPENDED)
     {
         meridianFlipStage = MF_NONE;
-        // Record initial mount coordinates that we may use later to perform a meridian flip
-        if (currentTelescope)
-        {
-            double initialRA, initialDE;
-            currentTelescope->getEqCoords(&initialRA, &initialDE);
-            if (currentTelescope->isJ2000())
-            {
-                getInitialMountCoords().setRA0(initialRA);
-                getInitialMountCoords().setDec0(initialDE);
-                getInitialMountCoords().apparentCoord(static_cast<long double>(J2000), KStars::Instance()->data()->ut().djd());
-            }
-            else
-            {
-                getInitialMountCoords().setRA(initialRA);
-                getInitialMountCoords().setDec(initialDE);
-            }
-
-            qCDebug(KSTARS_EKOS_CAPTURE) << "Initial mount coordinates RA:" << getInitialMountCoords().ra().toHMSString()
-                                         << "DE:" << getInitialMountCoords().dec().toDMSString();
-        }
-
         // start timer to measure time until next forced refocus
         startRefocusEveryNTimer();
     }
@@ -3001,6 +2980,19 @@ SkyPoint Capture::getInitialMountCoords() const
     return coords;
 }
 
+bool Capture::executeMeridianFlip() {
+
+    QDBusReply<bool> const reply = mountInterface->call("executeMeridianFlip");
+
+    if (reply.error().type() == QDBusError::NoError)
+        return reply.value();
+
+    // error occured
+    qCCritical(KSTARS_EKOS_CAPTURE) << QString("Warning: execute meridian flip request received DBUS error: %1").arg(QDBusError::errorString(reply.error().type()));
+
+    return false;
+}
+
 int Capture::getTotalFramesCount(QString signature)
 {
     int  result = 0;
@@ -4169,7 +4161,7 @@ bool Capture::checkMeridianFlip()
             emit meridianFlipStarted();
 
         // FIXME: handle result
-        slew(getInitialMountCoords());
+        executeMeridianFlip();
 
         secondsLabel->setText(i18n("Meridian Flip..."));
 
@@ -4202,7 +4194,7 @@ void Capture::checkMeridianFlipTimeout()
         }
         else
         {
-            slew(getInitialMountCoords());
+            executeMeridianFlip();
             appendLogText(i18n("Retrying meridian flip again..."));
         }
     }

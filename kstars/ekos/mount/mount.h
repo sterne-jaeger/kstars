@@ -246,6 +246,12 @@ class Mount : public QWidget, public Ui::Mount
     // Get list of scopes
     QJsonArray getScopes() const;
 
+    /*
+     * @brief Execute a meridian flip if necessary.
+     * @return true if a meridian flip was necessary
+     */
+    Q_INVOKABLE bool executeMeridianFlip();
+
 public slots:
 
     /**
