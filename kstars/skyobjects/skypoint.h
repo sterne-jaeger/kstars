@@ -23,6 +23,7 @@
 #include "kstarsdatetime.h"
 
 #include <QList>
+#include <QtDBus/QtDBus>
 
 //#define PROFILE_COORDINATE_CONVERSION
 
@@ -648,3 +649,7 @@ class SkyPoint
   protected:
     double lastPrecessJD { 0 }; // JD at which the last coordinate  (see updateCoords) for this SkyPoint was done
 };
+
+Q_DECLARE_METATYPE(SkyPoint)
+QDBusArgument &operator<<(QDBusArgument &argument, const SkyPoint &source);
+const QDBusArgument &operator>>(const QDBusArgument &argument, SkyPoint &dest);

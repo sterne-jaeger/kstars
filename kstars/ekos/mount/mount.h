@@ -17,7 +17,6 @@
 #include "indi/indistd.h"
 #include "indi/indifocuser.h"
 #include "indi/inditelescope.h"
-#include "dbusskypoint.h"
 
 class QQuickView;
 class QQuickItem;
@@ -43,7 +42,7 @@ class Mount : public QWidget, public Ui::Mount
     Q_PROPERTY(QList<double> equatorialCoords READ equatorialCoords)
     Q_PROPERTY(QList<double> horizontalCoords READ horizontalCoords)
     Q_PROPERTY(QList<double> telescopeInfo READ telescopeInfo WRITE setTelescopeInfo)
-    Q_PROPERTY(DBusSkyPoint currentTarget READ getCurrentTarget)
+    Q_PROPERTY(SkyPoint currentTarget READ getCurrentTarget)
     Q_PROPERTY(double hourAngle READ hourAngle)
     Q_PROPERTY(double initialHA READ getInitialHA)
     Q_PROPERTY(int slewRate READ slewRate WRITE setSlewRate)
@@ -154,9 +153,9 @@ class Mount : public QWidget, public Ui::Mount
     Q_SCRIPTABLE QList<double> horizontalCoords();
 
     /** DBUS interface function.
-         * Get Horizontal coords. An array of doubles is returned. First element is RA in hours. Second elements is DEC in degrees.
+         * Get Horizontal coords.
          */
-    Q_SCRIPTABLE DBusSkyPoint getCurrentTarget();
+    Q_SCRIPTABLE SkyPoint getCurrentTarget();
 
     /** DBUS interface function.
          * Get mount hour angle in hours (-12 to +12).

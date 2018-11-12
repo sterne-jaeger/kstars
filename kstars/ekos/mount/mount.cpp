@@ -56,7 +56,7 @@ Mount::Mount()
     // Set up DBus interfaces
     QPointer<QDBusInterface> ekosInterface = new QDBusInterface("org.kde.kstars", "/KStars/Ekos", "org.kde.kstars.Ekos",
                                                                 QDBusConnection::sessionBus(), this);
-    qDBusRegisterMetaType<DBusSkyPoint>();
+    qDBusRegisterMetaType<SkyPoint>();
 
     // Connecting DBus signals
     connect(ekosInterface, SIGNAL(newModule(QString)), this, SLOT(registerNewModule(QString)));
@@ -842,14 +842,9 @@ bool Mount::executeMeridianFlip() {
 
 }
 
-DBusSkyPoint Mount::getCurrentTarget()
+SkyPoint Mount::getCurrentTarget()
 {
-    DBusSkyPoint target;
-
-    target.ra  = currentTargetPosition.ra().Hours();
-    target.dec = currentTargetPosition.dec().Degrees();
-
-    return target;
+    return currentTargetPosition;
 }
 
 

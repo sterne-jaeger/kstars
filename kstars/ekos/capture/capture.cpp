@@ -2975,9 +2975,8 @@ void Capture::updateHFRThreshold()
 SkyPoint Capture::getInitialMountCoords() const
 {
     QVariant const result = mountInterface->property("currentTarget");
-    DBusSkyPoint point = result.value<DBusSkyPoint>();
-    SkyPoint coords(point.ra, point.dec);
-    return coords;
+    SkyPoint point = result.value<SkyPoint>();
+    return point;
 }
 
 bool Capture::executeMeridianFlip() {
