@@ -4641,42 +4641,49 @@ void Capture::openCalibrationDialog()
 IPState Capture::processPreCaptureCalibrationStage()
 {    
     // Unpark dust cap if we have to take light images.
-    if (activeJob->getFrameType() == FRAME_LIGHT && dustCap)
+    if (activeJob->getFrameType() == FRAME_LIGHT)
     {
-        if (dustCap->isLightOn() == true)
-        {
-            dustCapLightEnabled = false;
-            dustCap->SetLightEnabled(false);
+        // step 1: unpark dust cap
+        if (dustCap) {
+            if (dustCap->isLightOn() == true)
+            {
+                dustCapLightEnabled = false;
+                dustCap->SetLightEnabled(false);
+            }
+
+            // If cap is not unparked, unpark it
+            if (calibrationStage < CAL_DUSTCAP_UNPARKING && dustCap->isParked())
+            {
+                if (dustCap->UnPark())
+                {
+                    calibrationStage = CAL_DUSTCAP_UNPARKING;
+                    appendLogText(i18n("Unparking dust cap..."));
+                    return IPS_BUSY;
+                }
+                else
+                {
+                    appendLogText(i18n("Unparking dust cap failed, aborting..."));
+                    abort();
+                    return IPS_ALERT;
+                }
+            }
+
+            // Wait until cap is unparked
+            if (calibrationStage == CAL_DUSTCAP_UNPARKING)
+            {
+                if (dustCap->isUnParked() == false)
+                    return IPS_BUSY;
+                else
+                {
+                    calibrationStage = CAL_DUSTCAP_UNPARKED;
+                    appendLogText(i18n("Dust cap unparked."));
+                }
+            }
         }
 
-        // If cap is not unparked, unpark it
-        if (calibrationStage < CAL_DUSTCAP_UNPARKING && dustCap->isParked())
-        {
-            if (dustCap->UnPark())
-            {
-                calibrationStage = CAL_DUSTCAP_UNPARKING;
-                appendLogText(i18n("Unparking dust cap..."));
-                return IPS_BUSY;
-            }
-            else
-            {
-                appendLogText(i18n("Unparking dust cap failed, aborting..."));
-                abort();
-                return IPS_ALERT;
-            }
-        }
-
-        // Wait until cap is unparked
-        if (calibrationStage == CAL_DUSTCAP_UNPARKING)
-        {
-            if (dustCap->isUnParked() == false)
-                return IPS_BUSY;
-            else
-            {
-                calibrationStage = CAL_DUSTCAP_UNPARKED;
-                appendLogText(i18n("Dust cap unparked."));
-            }
-        }
+        // step 2: check if meridian flip is required
+        if (meridianFlipStage != MF_NONE || checkMeridianFlip())
+            return IPS_BUSY;
 
         calibrationStage = CAL_PRECAPTURE_COMPLETE;
 
