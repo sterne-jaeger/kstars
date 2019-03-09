@@ -144,6 +144,7 @@ Capture::Capture()
     connect(queueSaveAsB, &QPushButton::clicked, this, &Ekos::Capture::saveSequenceQueueAs);
     connect(queueLoadB, &QPushButton::clicked, this, static_cast<void(Ekos::Capture::*)()>(&Ekos::Capture::loadSequenceQueue));
     connect(resetB, &QPushButton::clicked, this, &Ekos::Capture::resetJobs);
+    connect(queueTable->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &Ekos::Capture::selectedJobCanged);
     connect(queueTable, &QAbstractItemView::doubleClicked, this, &Ekos::Capture::editJob);
     connect(queueTable, &QTableWidget::itemSelectionChanged, this, &Ekos::Capture::resetJobEdit);
     connect(setTemperatureB, &QPushButton::clicked, [&]()
@@ -4049,7 +4050,13 @@ void Capture::syncGUIToJob(SequenceJob * job)
     emit settingsUpdated(settings);
 }
 
-void Capture::editJob(QModelIndex i)
+void Capture::selectedJobCanged(QModelIndex current, QModelIndex previous)
+{
+    Q_UNUSED(previous);
+    selectJob(current);
+}
+
+void Capture::selectJob(QModelIndex i)
 {
     SequenceJob * job = jobs.at(i.row());
 
@@ -4058,6 +4065,11 @@ void Capture::editJob(QModelIndex i)
 
     syncGUIToJob(job);
 
+}
+
+void Capture::editJob(QModelIndex i)
+{
+    selectJob(i);
     appendLogText(i18n("Editing job #%1...", i.row() + 1));
 
     addToQueueB->setIcon(QIcon::fromTheme("dialog-ok-apply"));
