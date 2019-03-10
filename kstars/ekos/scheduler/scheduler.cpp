@@ -455,7 +455,7 @@ void Scheduler::addJob()
 
 void Scheduler::saveJob()
 {
-    if (state == SCHEDULER_RUNNIG)
+    if (state == SCHEDULER_RUNNING)
     {
         appendLogText(i18n("Warning: You cannot add or modify a job while the scheduler is running."));
         return;
@@ -821,7 +821,7 @@ void Scheduler::loadJob(QModelIndex i)
     if (jobUnderEdit == i.row())
         return;
 
-    if (state == SCHEDULER_RUNNIG)
+    if (state == SCHEDULER_RUNNING)
     {
         appendLogText(i18n("Warning: you cannot add or modify a job while the scheduler is running."));
         return;
@@ -1103,7 +1103,7 @@ void Scheduler::removeJob()
 
 void Scheduler::toggleScheduler()
 {
-    if (state == SCHEDULER_RUNNIG)
+    if (state == SCHEDULER_RUNNING)
     {
         preemptiveShutdown = false;
         stop();
@@ -1114,7 +1114,7 @@ void Scheduler::toggleScheduler()
 
 void Scheduler::stop()
 {
-    if (state != SCHEDULER_RUNNIG)
+    if (state != SCHEDULER_RUNNING)
         return;
 
     qCInfo(KSTARS_EKOS_SCHEDULER) << "Scheduler is stopping...";
@@ -1269,7 +1269,7 @@ void Scheduler::start()
 
             /* Reset and re-evaluate all scheduler jobs, then start the Scheduler */
             startJobEvaluation();
-            state = SCHEDULER_RUNNIG;
+            state = SCHEDULER_RUNNING;
             emit newStatus(state);
             schedulerTimer.start();
 
@@ -1284,7 +1284,7 @@ void Scheduler::start()
             /* Edit-related buttons are still disabled */
 
             /* The end-user cannot update the schedule, don't re-evaluate jobs. Timer schedulerTimer is already running. */
-            state = SCHEDULER_RUNNIG;
+            state = SCHEDULER_RUNNING;
             emit newStatus(state);
 
             qCDebug(KSTARS_EKOS_SCHEDULER) << "Scheduler paused.";
@@ -1965,7 +1965,7 @@ void Scheduler::evaluateJobs()
     /* Apply sorting to queue table, and mark it for saving if it changes */
     mDirty = reorderJobs(sortedJobs) | mDirty;
 
-    if (jobEvaluationOnly || state != SCHEDULER_RUNNIG)
+    if (jobEvaluationOnly || state != SCHEDULER_RUNNING)
     {
         qCInfo(KSTARS_EKOS_SCHEDULER) << "Ekos finished evaluating jobs, no job selection required.";
         jobEvaluationOnly = false;
@@ -2049,7 +2049,7 @@ void Scheduler::wakeUpScheduler()
     }
     else
     {
-        if (state == SCHEDULER_RUNNIG)
+        if (state == SCHEDULER_RUNNING)
             appendLogText(i18n("Scheduler is awake. Jobs shall be started when ready..."));
         else
             appendLogText(i18n("Scheduler is awake. Jobs shall be started when scheduler is resumed."));
@@ -2685,7 +2685,7 @@ bool Scheduler::checkShutdownState()
 
             setCurrentJob(nullptr);
 
-            if (state == SCHEDULER_RUNNIG)
+            if (state == SCHEDULER_RUNNING)
                 schedulerTimer.start();
 
             if (preemptiveShutdown == false)
@@ -3655,7 +3655,7 @@ void Scheduler::stopCurrentJobAction()
 
 bool Scheduler::manageConnectionLoss()
 {
-    if (SCHEDULER_RUNNIG != state)
+    if (SCHEDULER_RUNNING != state)
         return false;
 
     // Don't manage loss if Ekos is actually down in the state machine
@@ -4657,7 +4657,7 @@ void Scheduler::setDirty()
     if (sender() == startupProcedureButtonGroup || sender() == shutdownProcedureGroup)
         return;
 
-    if (0 <= jobUnderEdit && state != SCHEDULER_RUNNIG && 0 <= queueTable->currentRow())
+    if (0 <= jobUnderEdit && state != SCHEDULER_RUNNING && 0 <= queueTable->currentRow())
     {
         // Now that jobs are sorted, reset jobs that are later than the edited one for re-evaluation
         for (int row = jobUnderEdit; row < jobs.size(); row++)
@@ -5938,7 +5938,7 @@ bool Scheduler::createJobSequence(XMLEle *root, const QString &prefix, const QSt
 
 void Scheduler::resetAllJobs()
 {
-    if (state == SCHEDULER_RUNNIG)
+    if (state == SCHEDULER_RUNNING)
         return;
 
     // Reset capture count of all jobs before re-evaluating
