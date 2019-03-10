@@ -791,6 +791,8 @@ void Scheduler::syncGUIToJob(SchedulerJob *job)
         minMoonSeparation->setValue(DEFAULT_MIN_MOON_SEPARATION);
     }
 
+    weatherCheck->setChecked(job->getEnforceWeather());
+
     twilightCheck->blockSignals(true);
     twilightCheck->setChecked(job->getEnforceTwilight());
     twilightCheck->blockSignals(false);
@@ -847,7 +849,6 @@ void Scheduler::loadJob(QModelIndex i)
         fitsURL = QUrl();
 
     sequenceURL = job->getSequenceFile();
-
 
     /* Turn the add button into an apply button */
     setJobAddApply(false);
