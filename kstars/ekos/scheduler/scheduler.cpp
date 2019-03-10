@@ -169,6 +169,7 @@ Scheduler::Scheduler()
     connect(queueDownB, &QPushButton::clicked, this, &Scheduler::moveJobDown);
     connect(evaluateOnlyB, &QPushButton::clicked, this, &Scheduler::startJobEvaluation);
     connect(sortJobsB, &QPushButton::clicked, this, &Scheduler::sortJobsPerAltitude);
+    connect(queueTable->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &Scheduler::queueTableSelectionChanged);
     connect(queueTable, &QAbstractItemView::clicked, this, &Scheduler::clickQueueTable);
     connect(queueTable, &QAbstractItemView::doubleClicked, this, &Scheduler::loadJob);
 
@@ -726,27 +727,8 @@ void Scheduler::saveJob()
     }
 }
 
-void Scheduler::loadJob(QModelIndex i)
+void Scheduler::syncGUIToJob(SchedulerJob *job)
 {
-    if (jobUnderEdit == i.row())
-        return;
-
-    if (state == SCHEDULER_RUNNIG)
-    {
-        appendLogText(i18n("Warning: you cannot add or modify a job while the scheduler is running."));
-        return;
-    }
-
-    SchedulerJob * const job = jobs.at(i.row());
-
-    if (job == nullptr)
-        return;
-
-    watchJobChanges(false);
-
-    //job->setState(SchedulerJob::JOB_IDLE);
-    //job->setStage(SchedulerJob::STAGE_IDLE);
-
     nameEdit->setText(job->getName());
 
     prioritySpin->setValue(job->getPriority());
@@ -755,18 +737,11 @@ void Scheduler::loadJob(QModelIndex i)
     decBox->showInDegrees(job->getTargetCoords().dec0());
 
     if (job->getFITSFile().isEmpty() == false)
-    {
         fitsEdit->setText(job->getFITSFile().toLocalFile());
-        fitsURL = job->getFITSFile();
-    }
     else
-    {
         fitsEdit->clear();
-        fitsURL = QUrl();
-    }
 
     sequenceEdit->setText(job->getSequenceFile().toLocalFile());
-    sequenceURL = job->getSequenceFile();
 
     trackStepCheck->setChecked(job->getStepPipeline() & SchedulerJob::USE_TRACK);
     focusStepCheck->setChecked(job->getStepPipeline() & SchedulerJob::USE_FOCUS);
@@ -814,8 +789,6 @@ void Scheduler::loadJob(QModelIndex i)
         minMoonSeparation->setValue(DEFAULT_MIN_MOON_SEPARATION);
     }
 
-    weatherCheck->setChecked(job->getEnforceWeather());
-
     twilightCheck->blockSignals(true);
     twilightCheck->setChecked(job->getEnforceTwilight());
     twilightCheck->blockSignals(false);
@@ -841,6 +814,39 @@ void Scheduler::loadJob(QModelIndex i)
             break;
     }
 
+}
+
+void Scheduler::loadJob(QModelIndex i)
+{
+    if (jobUnderEdit == i.row())
+        return;
+
+    if (state == SCHEDULER_RUNNIG)
+    {
+        appendLogText(i18n("Warning: you cannot add or modify a job while the scheduler is running."));
+        return;
+    }
+
+    SchedulerJob * const job = jobs.at(i.row());
+
+    if (job == nullptr)
+        return;
+
+    watchJobChanges(false);
+
+    //job->setState(SchedulerJob::JOB_IDLE);
+    //job->setStage(SchedulerJob::STAGE_IDLE);
+    syncGUIToJob(job);
+
+    if (job->getFITSFile().isEmpty() == false)
+        fitsURL = job->getFITSFile();
+    else
+        fitsURL = QUrl();
+
+    sequenceURL = job->getSequenceFile();
+
+    weatherCheck->setChecked(job->getEnforceWeather());
+
     /* Turn the add button into an apply button */
     setJobAddApply(false);
 
@@ -855,6 +861,18 @@ void Scheduler::loadJob(QModelIndex i)
     qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' at row #%2 is currently edited.").arg(job->getName()).arg(jobUnderEdit + 1);
 
     watchJobChanges(true);
+}
+
+void Scheduler::queueTableSelectionChanged(QModelIndex current, QModelIndex previous)
+{
+    Q_UNUSED(previous);
+    SchedulerJob * const job = jobs.at(current.row());
+
+    if (job == nullptr)
+        return;
+
+    resetJobEdit();
+    syncGUIToJob(job);
 }
 
 void Scheduler::clickQueueTable(QModelIndex index)
