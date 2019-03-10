@@ -791,8 +791,6 @@ void Scheduler::syncGUIToJob(SchedulerJob *job)
         minMoonSeparation->setValue(DEFAULT_MIN_MOON_SEPARATION);
     }
 
-    weatherCheck->setChecked(job->getEnforceWeather());
-
     twilightCheck->blockSignals(true);
     twilightCheck->setChecked(job->getEnforceTwilight());
     twilightCheck->blockSignals(false);
@@ -850,6 +848,7 @@ void Scheduler::loadJob(QModelIndex i)
 
     sequenceURL = job->getSequenceFile();
 
+
     /* Turn the add button into an apply button */
     setJobAddApply(false);
 
@@ -864,6 +863,18 @@ void Scheduler::loadJob(QModelIndex i)
     qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' at row #%2 is currently edited.").arg(job->getName()).arg(jobUnderEdit + 1);
 
     watchJobChanges(true);
+}
+
+void Scheduler::queueTableSelectionChanged(QModelIndex current, QModelIndex previous)
+{
+    Q_UNUSED(previous);
+    SchedulerJob * const job = jobs.at(current.row());
+
+    if (job == nullptr)
+        return;
+
+    resetJobEdit();
+    syncGUIToJob(job);
 }
 
 void Scheduler::queueTableSelectionChanged(QModelIndex current, QModelIndex previous)
