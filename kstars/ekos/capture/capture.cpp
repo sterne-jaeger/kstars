@@ -4015,6 +4015,11 @@ void Capture::selectJob(QModelIndex i)
 
     syncGUIToJob(job);
 
+    if (isBusy || jobs.size() < 2)
+        return;
+
+    queueUpB->setEnabled(i.row() > 0);
+    queueDownB->setEnabled(i.row()+1 < jobs.size());
 }
 
 void Capture::editJob(QModelIndex i)
