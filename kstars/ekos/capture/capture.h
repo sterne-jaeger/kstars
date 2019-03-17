@@ -712,7 +712,7 @@ class Capture : public QWidget, public Ui::Capture
         void processCaptureTimeout();
 
     // selection of a job
-    void selectedJobCanged(QModelIndex current, QModelIndex previous);
+    void selectedJobChanged(QModelIndex current, QModelIndex previous);
 
         /* Capture */
 
