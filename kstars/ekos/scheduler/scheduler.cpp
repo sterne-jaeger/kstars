@@ -869,6 +869,10 @@ void Scheduler::loadJob(QModelIndex i)
 void Scheduler::queueTableSelectionChanged(QModelIndex current, QModelIndex previous)
 {
     Q_UNUSED(previous);
+
+    if (current.row() < 0 || (current.row()+1) > jobs.size())
+        return;
+
     SchedulerJob * const job = jobs.at(current.row());
 
     if (job == nullptr)
