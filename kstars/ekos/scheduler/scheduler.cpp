@@ -868,6 +868,10 @@ void Scheduler::loadJob(QModelIndex i)
 void Scheduler::queueTableSelectionChanged(QModelIndex current, QModelIndex previous)
 {
     Q_UNUSED(previous);
+
+    if (current.row() < 0 || (current.row()+1) > jobs.size())
+        return;
+
     SchedulerJob * const job = jobs.at(current.row());
 
     if (job == nullptr)
@@ -4082,10 +4086,11 @@ bool Scheduler::loadScheduler(const QString &fileURL)
     if (jobUnderEdit >= 0)
         resetJobEdit();
 
-    qDeleteAll(jobs);
-    jobs.clear();
     while (queueTable->rowCount() > 0)
         queueTable->removeRow(0);
+
+    qDeleteAll(jobs);
+    jobs.clear();
 
     LilXML *xmlParser = newLilXML();
     char errmsg[MAXRBUF];

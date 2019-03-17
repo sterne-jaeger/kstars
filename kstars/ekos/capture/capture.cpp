@@ -4005,6 +4005,9 @@ void Capture::selectedJobCanged(QModelIndex current, QModelIndex previous)
 
 void Capture::selectJob(QModelIndex i)
 {
+    if (i.row() < 0 || (i.row()+1) > jobs.size())
+        return;
+
     SequenceJob * job = jobs.at(i.row());
 
     if (job == nullptr)
@@ -4229,10 +4232,10 @@ void Capture::clearSequenceQueue()
     activeJob = nullptr;
     //m_TargetName.clear();
     //stop();
-    qDeleteAll(jobs);
-    jobs.clear();
     while (queueTable->rowCount() > 0)
         queueTable->removeRow(0);
+    qDeleteAll(jobs);
+    jobs.clear();
 }
 
 QString Capture::getSequenceQueueStatus()
