@@ -818,6 +818,7 @@ void Scheduler::syncGUIToJob(SchedulerJob *job)
             break;
     }
 
+    setJobManipulation(!Options::sortSchedulerJobs(), true);
 }
 
 void Scheduler::loadJob(QModelIndex i)
@@ -906,19 +907,21 @@ void Scheduler::setJobAddApply(bool add_mode)
 
 void Scheduler::setJobManipulation(bool can_reorder, bool can_delete)
 {
+    bool can_edit = (state == SCHEDULER_IDLE);
+
     if (can_reorder)
     {
         int const currentRow = queueTable->currentRow();
-        queueUpB->setEnabled(0 < currentRow);
-        queueDownB->setEnabled(currentRow < queueTable->rowCount() - 1);
+        queueUpB->setEnabled(can_edit && 0 < currentRow);
+        queueDownB->setEnabled(can_edit && currentRow < queueTable->rowCount() - 1);
     }
     else
     {
         queueUpB->setEnabled(false);
         queueDownB->setEnabled(false);
     }
-    sortJobsB->setEnabled(can_reorder);
-    removeFromQueueB->setEnabled(can_delete);
+    sortJobsB->setEnabled(can_edit && can_reorder);
+    removeFromQueueB->setEnabled(can_edit && can_delete);
 }
 
 bool Scheduler::reorderJobs(QList<SchedulerJob*> reordered_sublist)
