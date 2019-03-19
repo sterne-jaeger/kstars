@@ -1094,8 +1094,16 @@ void Scheduler::removeJob()
         startB->setEnabled(false);
         pauseB->setEnabled(false);
     }
-    /* Else load the settings of the job that was just deleted */
-    else loadJob(queueTable->currentIndex());
+
+    /* Else update the selection */
+    else
+    {
+        if (currentRow > queueTable->rowCount())
+            currentRow = queueTable->rowCount() - 1;
+
+        loadJob(queueTable->currentIndex());
+        queueTable->selectRow(currentRow);
+    }
 
     /* If needed, reset edit mode to clean up UI */
     if (jobUnderEdit >= 0)
