@@ -2404,6 +2404,15 @@ void Capture::removeJobFromQueue()
         currentRow = queueTable->rowCount() - 1;
 
     removeJob(currentRow);
+
+    // update selection
+    if (queueTable->rowCount() == 0)
+        return;
+
+    if (currentRow > queueTable->rowCount())
+        queueTable->selectRow(queueTable->rowCount()-1);
+    else
+        queueTable->selectRow(currentRow);
 }
 
 void Capture::removeJob(int index)
