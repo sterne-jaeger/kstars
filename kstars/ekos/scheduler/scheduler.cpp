@@ -1383,7 +1383,7 @@ void Scheduler::evaluateJobs()
 
             case SchedulerJob::JOB_ABORTED:
                 /* If job is aborted and we're running, keep its evaluation until there is nothing else to do */
-                if (state == SCHEDULER_RUNNIG)
+                if (state == SCHEDULER_RUNNING)
                     continue;
                 /* Fall through */
             case SchedulerJob::JOB_IDLE:
