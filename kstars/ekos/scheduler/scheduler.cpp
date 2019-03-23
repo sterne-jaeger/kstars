@@ -53,6 +53,8 @@ Scheduler::Scheduler()
 
     dirPath = QUrl::fromLocalFile(QDir::homePath());
 
+    strategy = new ScheduleStrategy();
+
     // Get current KStars time and set seconds to zero
     QDateTime currentDateTime = KStarsData::Instance()->lt();
     QTime currentTime         = currentDateTime.time();
@@ -75,8 +77,6 @@ Scheduler::Scheduler()
     QDBusConnection::sessionBus().connect("org.kde.kstars", "/KStars/Ekos", "org.kde.kstars.Ekos", "newModule", this, SLOT(registerNewModule(QString)));
     QDBusConnection::sessionBus().connect("org.kde.kstars", "/KStars/Ekos", "org.kde.kstars.Ekos", "indiStatusChanged", this, SLOT(setINDICommunicationStatus(Ekos::CommunicationStatus)));
     QDBusConnection::sessionBus().connect("org.kde.kstars", "/KStars/Ekos", "org.kde.kstars.Ekos", "ekosStatusChanged", this, SLOT(setEkosCommunicationStatus(Ekos::CommunicationStatus)));
-
-    moon = dynamic_cast<KSMoon *>(KStarsData::Instance()->skyComposite()->findByName("Moon"));
 
     sleepLabel->setPixmap(
         QIcon::fromTheme("chronometer").pixmap(QSize(32, 32)));
@@ -586,7 +586,7 @@ void Scheduler::saveJob()
     if (SchedulerJob::START_AT == job->getFileStartupCondition())
     {
         /* Warn if appending a job which startup time doesn't allow proper score */
-        if (calculateJobScore(job, job->getStartupTime()) < 0)
+        if (strategy->calculateJobScore(job, job->getStartupTime()) < 0)
             appendLogText(i18n("Warning: job '%1' has startup time %2 resulting in a negative score, and will be marked invalid when processed.",
                                job->getName(), job->getStartupTime().toString(job->getDateTimeDisplayFormat())));
 
@@ -1328,7 +1328,7 @@ void Scheduler::evaluateJobs()
         updateCompletedJobsCount();
 
     /* Update dawn and dusk astronomical times - unconditionally in case date changed */
-    calculateDawnDusk();
+    strategy->calculateDawnDusk();
 
     /* First, filter out non-schedulable jobs */
     /* FIXME: jobs in state JOB_ERROR should not be in the list, reorder states */
@@ -1433,7 +1433,7 @@ void Scheduler::evaluateJobs()
      * We filter out jobs that won't run now, and make sure jobs are not all starting at the same time.
      */
 
-    updatePreDawn();
+    strategy->updatePreDawn();
 
     /* This predicate matches jobs not being evaluated and not aborted */
     auto neither_evaluated_nor_aborted = [](SchedulerJob const * const job)
@@ -1588,7 +1588,7 @@ void Scheduler::evaluateJobs()
                     break;
                 }
                 // Check whether the current job has a positive dark sky score at the time of startup
-                else if (true == currentJob->getEnforceTwilight() && getDarkSkyScore(currentJob->getStartupTime()) < 0)
+                else if (true == currentJob->getEnforceTwilight() && strategy->getDarkSkyScore(currentJob->getStartupTime()) < 0)
                 {
                     currentJob->setState(SchedulerJob::JOB_INVALID);
 
@@ -1598,7 +1598,7 @@ void Scheduler::evaluateJobs()
                     break;
                 }
                 // Check whether the current job has a positive altitude score at the time of startup
-                else if (-90 < currentJob->getMinAltitude() && getAltitudeScore(currentJob, currentJob->getStartupTime()) < 0)
+                else if (-90 < currentJob->getMinAltitude() && strategy->getAltitudeScore(currentJob, currentJob->getStartupTime()) < 0)
                 {
                     currentJob->setState(SchedulerJob::JOB_INVALID);
 
@@ -1608,7 +1608,7 @@ void Scheduler::evaluateJobs()
                     break;
                 }
                 // Check whether the current job has a positive Moon separation score at the time of startup
-                else if (0 < currentJob->getMinMoonSeparation() && getMoonSeparationScore(currentJob, currentJob->getStartupTime()) < 0)
+                else if (0 < currentJob->getMinMoonSeparation() && strategy->getMoonSeparationScore(currentJob, currentJob->getStartupTime()) < 0)
                 {
                     currentJob->setState(SchedulerJob::JOB_INVALID);
 
@@ -1639,7 +1639,7 @@ void Scheduler::evaluateJobs()
                 }
 
                 // This job is non-movable, we're done
-                currentJob->setScore(calculateJobScore(currentJob, now));
+                currentJob->setScore(strategy->calculateJobScore(currentJob, now));
                 currentJob->setState(SchedulerJob::JOB_SCHEDULED);
                 qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' is scheduled to start at %2, in compliance with fixed startup time requirement.")
                                                .arg(currentJob->getName())
@@ -1713,7 +1713,7 @@ void Scheduler::evaluateJobs()
 
                 // We wouldn't start observation 30 mins (default) before dawn.
                 // FIXME: Refactor duplicated dawn/dusk calculations
-                double const earlyDawn = Dawn - Options::preDawnTime() / (60.0 * 24.0);
+                double const earlyDawn = strategy->getDawn() - Options::preDawnTime() / (60.0 * 24.0);
 
                 // Compute dawn time for the startup date of the job
                 // FIXME: Use KAlmanac to find the real dawn/dusk time for the day the job is supposed to be processed
@@ -1723,7 +1723,7 @@ void Scheduler::evaluateJobs()
                 if (dawnDateTime < currentJob->getStartupTime())
                 {
                     // Compute dusk time for the startup date of the job - no lead time on dusk
-                    QDateTime const duskDateTime(currentJob->getStartupTime().date(), QTime(0, 0).addSecs(Dusk * 24 * 3600));
+                    QDateTime const duskDateTime(currentJob->getStartupTime().date(), QTime(0, 0).addSecs(strategy->getDusk() * 24 * 3600));
 
                     // Check if the job starts before dusk
                     if (currentJob->getStartupTime() < duskDateTime)
@@ -1741,7 +1741,7 @@ void Scheduler::evaluateJobs()
 
                 // Compute dawn time for the day following the startup time, but disregard the pre-dawn offset as we'll consider completion
                 // FIXME: Use KAlmanac to find the real dawn/dusk time for the day next to the day the job is supposed to be processed
-                QDateTime const nextDawnDateTime(currentJob->getStartupTime().date().addDays(1), QTime(0, 0).addSecs(Dawn * 24 * 3600));
+                QDateTime const nextDawnDateTime(currentJob->getStartupTime().date().addDays(1), QTime(0, 0).addSecs(strategy->getDawn() * 24 * 3600));
 
                 // Check if the completion date overlaps the next dawn, and issue a warning if so
                 if (nextDawnDateTime < currentJob->getCompletionTime())
@@ -1751,7 +1751,7 @@ void Scheduler::evaluateJobs()
                 }
 
 
-                Q_ASSERT_X(0 <= getDarkSkyScore(currentJob->getStartupTime()), __FUNCTION__, "Consolidated startup time results in a positive dark sky score.");
+                Q_ASSERT_X(0 <= strategy->getDarkSkyScore(currentJob->getStartupTime()), __FUNCTION__, "Consolidated startup time results in a positive dark sky score.");
             }
 
 
@@ -1765,7 +1765,7 @@ void Scheduler::evaluateJobs()
             if (SchedulerJob::START_CULMINATION == currentJob->getFileStartupCondition())
             {
                 // Consolidate the culmination time, with offset, of the current job
-                QDateTime const nextCulminationTime = calculateCulmination(currentJob, currentJob->getCulminationOffset(), currentJob->getStartupTime());
+                QDateTime const nextCulminationTime = strategy->calculateCulmination(currentJob, currentJob->getCulminationOffset(), currentJob->getStartupTime());
 
                 if (nextCulminationTime.isValid()) // Guaranteed
                 {
@@ -1806,7 +1806,7 @@ void Scheduler::evaluateJobs()
             if (-90 < currentJob->getMinAltitude())
             {
                 // Consolidate a new altitude time from the startup time of the current job
-                QDateTime const nextAltitudeTime = calculateAltitudeTime(currentJob, currentJob->getMinAltitude(), currentJob->getMinMoonSeparation(), currentJob->getStartupTime());
+                QDateTime const nextAltitudeTime = strategy->calculateAltitudeTime(currentJob, currentJob->getMinAltitude(), currentJob->getMinMoonSeparation(), currentJob->getStartupTime());
 
                 if (nextAltitudeTime.isValid())
                 {
@@ -1835,7 +1835,7 @@ void Scheduler::evaluateJobs()
                     break;
                 }
 
-                Q_ASSERT_X(0 <= getAltitudeScore(currentJob, currentJob->getStartupTime()), __FUNCTION__, "Consolidated altitude time results in a positive altitude score.");
+                Q_ASSERT_X(0 <= strategy->getAltitudeScore(currentJob, currentJob->getStartupTime()), __FUNCTION__, "Consolidated altitude time results in a positive altitude score.");
             }
 
 
@@ -1902,7 +1902,7 @@ void Scheduler::evaluateJobs()
 
             // ----- #9 Update score for current time and mark evaluating jobs as scheduled
 
-            currentJob->setScore(calculateJobScore(currentJob, now));
+            currentJob->setScore(strategy->calculateJobScore(currentJob, now));
             currentJob->setState(SchedulerJob::JOB_SCHEDULED);
 
             qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' on row #%2 passed all checks after %3 attempts, will proceed at %4 for approximately %5 seconds, marking scheduled")
@@ -2008,7 +2008,7 @@ void Scheduler::evaluateJobs()
     /* Check if job can be processed right now */
     SchedulerJob * const job_to_execute = *job_to_execute_iterator;
     if (job_to_execute->getFileStartupCondition() == SchedulerJob::START_ASAP)
-        if( 0 <= calculateJobScore(job_to_execute, now))
+        if( 0 <= strategy->calculateJobScore(job_to_execute, now))
             job_to_execute->setStartupTime(now);
 
     qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' is selected for next observation with priority #%2 and score %3.")
@@ -2040,489 +2040,6 @@ void Scheduler::wakeUpScheduler()
 
         schedulerTimer.start();
     }
-}
-
-double Scheduler::findAltitude(const SkyPoint &target, const QDateTime &when, bool * is_setting, bool debug)
-{
-    // FIXME: block calculating target coordinates at a particular time is duplicated in several places
-
-    GeoLocation * const geo = KStarsData::Instance()->geo();
-
-    // Retrieve the argument date/time, or fall back to current time - don't use QDateTime's timezone!
-    KStarsDateTime ltWhen(when.isValid() ?
-                          Qt::UTC == when.timeSpec() ? geo->UTtoLT(KStarsDateTime(when)) : when :
-                          KStarsData::Instance()->lt());
-
-    // Create a sky object with the target catalog coordinates
-    SkyObject o;
-    o.setRA0(target.ra0());
-    o.setDec0(target.dec0());
-
-    // Update RA/DEC of the target for the current fraction of the day
-    KSNumbers numbers(ltWhen.djd());
-    o.updateCoordsNow(&numbers);
-
-    // Calculate alt/az coordinates using KStars instance's geolocation
-    CachingDms const LST = geo->GSTtoLST(geo->LTtoUT(ltWhen).gst());
-    o.EquatorialToHorizontal(&LST, geo->lat());
-
-    // Hours are reduced to [0,24[, meridian being at 0
-    double offset = LST.Hours() - o.ra().Hours();
-    if (24.0 <= offset)
-        offset -= 24.0;
-    else if (offset < 0.0)
-        offset += 24.0;
-    bool const passed_meridian = 0.0 <= offset && offset < 12.0;
-
-    if (debug)
-        qCDebug(KSTARS_EKOS_SCHEDULER) << QString("When:%9 LST:%8 RA:%1 RA0:%2 DEC:%3 DEC0:%4 alt:%5 setting:%6 HA:%7")
-                                       .arg(o.ra().toHMSString())
-                                       .arg(o.ra0().toHMSString())
-                                       .arg(o.dec().toHMSString())
-                                       .arg(o.dec0().toHMSString())
-                                       .arg(o.alt().Degrees())
-                                       .arg(passed_meridian ? "yes" : "no")
-                                       .arg(o.ra().Hours())
-                                       .arg(LST.toHMSString())
-                                       .arg(ltWhen.toString("HH:mm:ss"));
-
-    if (is_setting)
-        *is_setting = passed_meridian;
-
-    return o.alt().Degrees();
-}
-
-QDateTime Scheduler::calculateAltitudeTime(SchedulerJob const *job, double minAltitude, double minMoonAngle, QDateTime const &when) const
-{
-    // FIXME: block calculating target coordinates at a particular time is duplicated in several places
-
-    // Retrieve the argument date/time, or fall back to current time - don't use QDateTime's timezone!
-    KStarsDateTime ltWhen(when.isValid() ?
-                          Qt::UTC == when.timeSpec() ? geo->UTtoLT(KStarsDateTime(when)) : when :
-                          KStarsData::Instance()->lt());
-
-    // Create a sky object with the target catalog coordinates
-    SkyPoint const target = job->getTargetCoords();
-    SkyObject o;
-    o.setRA0(target.ra0());
-    o.setDec0(target.dec0());
-
-    // Calculate the UT at the argument time
-    KStarsDateTime const ut = geo->LTtoUT(ltWhen);
-
-    double const SETTING_ALTITUDE_CUTOFF = Options::settingAltitudeCutoff();
-
-    // Within the next 24 hours, search when the job target matches the altitude and moon constraints
-    for (unsigned int minute = 0; minute < 24 * 60; minute++)
-    {
-        KStarsDateTime const ltOffset(ltWhen.addSecs(minute * 60));
-
-        // Update RA/DEC of the target for the current fraction of the day
-        KSNumbers numbers(ltOffset.djd());
-        o.updateCoordsNow(&numbers);
-
-        // Compute local sidereal time for the current fraction of the day, calculate altitude
-        CachingDms const LST = geo->GSTtoLST(geo->LTtoUT(ltOffset).gst());
-        o.EquatorialToHorizontal(&LST, geo->lat());
-        double const altitude = o.alt().Degrees();
-
-        if (minAltitude <= altitude)
-        {
-            // Don't test proximity to dawn in this situation, we only cater for altitude here
-
-            // Continue searching if Moon separation is not good enough
-            if (0 < minMoonAngle && getMoonSeparationScore(job, ltOffset) < 0)
-                continue;
-
-            // Continue searching if target is setting and under the cutoff
-            double offset = LST.Hours() - o.ra().Hours();
-            if (24.0 <= offset)
-                offset -= 24.0;
-            else if (offset < 0.0)
-                offset += 24.0;
-            if (0.0 <= offset && offset < 12.0)
-                if (altitude - SETTING_ALTITUDE_CUTOFF < minAltitude)
-                    continue;
-
-            return ltOffset;
-        }
-    }
-
-    return QDateTime();
-}
-
-QDateTime Scheduler::calculateCulmination(SchedulerJob const *job, int offset_minutes, QDateTime const &when) const
-{
-    // FIXME: culmination calculation is a min altitude requirement, should be an interval altitude requirement
-    // FIXME: block calculating target coordinates at a particular time is duplicated in calculateCulmination
-
-    // Retrieve the argument date/time, or fall back to current time - don't use QDateTime's timezone!
-    KStarsDateTime ltWhen(when.isValid() ?
-                          Qt::UTC == when.timeSpec() ? geo->UTtoLT(KStarsDateTime(when)) : when :
-                          KStarsData::Instance()->lt());
-
-    // Create a sky object with the target catalog coordinates
-    SkyPoint const target = job->getTargetCoords();
-    SkyObject o;
-    o.setRA0(target.ra0());
-    o.setDec0(target.dec0());
-
-    // Update RA/DEC for the argument date/time
-    KSNumbers numbers(ltWhen.djd());
-    o.updateCoordsNow(&numbers);
-
-    // Calculate transit date/time at the argument date - transitTime requires UT and returns LocalTime
-    KStarsDateTime transitDateTime(ltWhen.date(), o.transitTime(geo->LTtoUT(ltWhen), geo), Qt::LocalTime);
-
-    // Shift transit date/time by the argument offset
-    KStarsDateTime observationDateTime = transitDateTime.addSecs(offset_minutes * 60);
-
-    // Relax observation time, culmination calculation is stable at minute only
-    KStarsDateTime relaxedDateTime = observationDateTime.addSecs(Options::leadTime() * 60);
-
-    // Verify resulting observation time is under lead time vs. argument time
-    // If sooner, delay by 8 hours to get to the next transit - perhaps in a third call
-    if (relaxedDateTime < ltWhen)
-    {
-        qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' startup %2 is posterior to transit %3, shifting by 8 hours.")
-                                       .arg(job->getName())
-                                       .arg(ltWhen.toString(job->getDateTimeDisplayFormat()))
-                                       .arg(relaxedDateTime.toString(job->getDateTimeDisplayFormat()));
-
-        return calculateCulmination(job, offset_minutes, when.addSecs(8 * 60 * 60));
-    }
-
-    // Guarantees - culmination calculation is stable at minute level, so relax by lead time
-    Q_ASSERT_X(observationDateTime.isValid(), __FUNCTION__, "Observation time for target culmination is valid.");
-    Q_ASSERT_X(ltWhen <= relaxedDateTime, __FUNCTION__, "Observation time for target culmination is at or after than argument time");
-
-    // Return consolidated culmination time
-    return Qt::UTC == observationDateTime.timeSpec() ? geo->UTtoLT(observationDateTime) : observationDateTime;
-}
-
-int16_t Scheduler::getWeatherScore() const
-{
-    if (weatherCheck->isEnabled() == false || weatherCheck->isChecked() == false)
-        return 0;
-
-    if (weatherStatus == IPS_BUSY)
-        return BAD_SCORE / 2;
-    else if (weatherStatus == IPS_ALERT)
-        return BAD_SCORE;
-
-    return 0;
-}
-
-int16_t Scheduler::getDarkSkyScore(QDateTime const &when) const
-{
-    double const secsPerDay = 24.0 * 3600.0;
-    double const minsPerDay = 24.0 * 60.0;
-
-    // Dark sky score is calculated based on distance to today's dawn and next dusk.
-    // Option "Pre-dawn Time" avoids executing a job when dawn is approaching, and is a value in minutes.
-    // - If observation is between option "Pre-dawn Time" and dawn, score is BAD_SCORE/50.
-    // - If observation is before dawn today, score is fraction of the day from beginning of observation to dawn time, as percentage.
-    // - If observation is after dusk, score is fraction of the day from dusk to beginning of observation, as percentage.
-    // - If observation is between dawn and dusk, score is BAD_SCORE.
-    //
-    // If observation time is invalid, the score is calculated for the current day time.
-    // Note exact dusk time is considered valid in terms of night time, and will return a positive, albeit null, score.
-
-    // FIXME: Dark sky score should consider the middle of the local night as best value.
-    // FIXME: Current algorithm uses the dawn and dusk of today, instead of the day of the observation.
-
-    int const earlyDawnSecs = static_cast <int> ((Dawn - static_cast <double> (Options::preDawnTime()) / minsPerDay) * secsPerDay);
-    int const dawnSecs = static_cast <int> (Dawn * secsPerDay);
-    int const duskSecs = static_cast <int> (Dusk * secsPerDay);
-    int const obsSecs = (when.isValid() ? when : KStarsData::Instance()->lt()).time().msecsSinceStartOfDay() / 1000;
-
-    int16_t score = 0;
-
-    if (earlyDawnSecs <= obsSecs && obsSecs < dawnSecs)
-    {
-        score = BAD_SCORE / 50;
-
-        //qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Dark sky score at %1 is %2 (between pre-dawn and dawn).")
-        //    .arg(observationDateTime.toString())
-        //    .arg(QString::asprintf("%+d", score));
-    }
-    else if (obsSecs < dawnSecs)
-    {
-        score = static_cast <int16_t> ((dawnSecs - obsSecs) / secsPerDay) * 100;
-
-        //qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Dark sky score at %1 is %2 (before dawn).")
-        //    .arg(observationDateTime.toString())
-        //    .arg(QString::asprintf("%+d", score));
-    }
-    else if (duskSecs <= obsSecs)
-    {
-        score = static_cast <int16_t> ((obsSecs - duskSecs) / secsPerDay) * 100;
-
-        //qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Dark sky score at %1 is %2 (after dusk).")
-        //    .arg(observationDateTime.toString())
-        //    .arg(QString::asprintf("%+d", score));
-    }
-    else
-    {
-        score = BAD_SCORE;
-
-        //qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Dark sky score at %1 is %2 (during daylight).")
-        //    .arg(observationDateTime.toString())
-        //    .arg(QString::asprintf("%+d", score));
-    }
-
-    return score;
-}
-
-int16_t Scheduler::calculateJobScore(SchedulerJob const *job, QDateTime const &when) const
-{
-    if (nullptr == job)
-        return BAD_SCORE;
-
-    /* Only consolidate the score if light frames are required, calibration frames can run whenever needed */
-    if (!job->getLightFramesRequired())
-        return 1000;
-
-    int16_t total = 0;
-
-    /* As soon as one score is negative, it's a no-go and other scores are unneeded */
-
-    if (job->getEnforceTwilight())
-    {
-        int16_t const darkSkyScore = getDarkSkyScore(when);
-
-        qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' dark sky score is %2 at %3")
-                                       .arg(job->getName())
-                                       .arg(QString::asprintf("%+d", darkSkyScore))
-                                       .arg(when.toString(job->getDateTimeDisplayFormat()));
-
-        total += darkSkyScore;
-    }
-
-    /* We still enforce altitude if the job is neither required to track nor guide, because this is too confusing for the end-user.
-     * If we bypass calculation here, it must also be bypassed when checking job constraints in checkJobStage.
-     */
-    if (0 <= total /*&& ((job->getStepPipeline() & SchedulerJob::USE_TRACK) || (job->getStepPipeline() & SchedulerJob::USE_GUIDE))*/)
-    {
-        int16_t const altitudeScore = getAltitudeScore(job, when);
-
-        qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' altitude score is %2 at %3")
-                                       .arg(job->getName())
-                                       .arg(QString::asprintf("%+d", altitudeScore))
-                                       .arg(when.toString(job->getDateTimeDisplayFormat()));
-
-        total += altitudeScore;
-    }
-
-    if (0 <= total)
-    {
-        int16_t const moonSeparationScore = getMoonSeparationScore(job, when);
-
-        qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' Moon separation score is %2 at %3")
-                                       .arg(job->getName())
-                                       .arg(QString::asprintf("%+d", moonSeparationScore))
-                                       .arg(when.toString(job->getDateTimeDisplayFormat()));
-
-        total += moonSeparationScore;
-    }
-
-    qCInfo(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' has a total score of %2 at %3.")
-                                  .arg(job->getName())
-                                  .arg(QString::asprintf("%+d", total))
-                                  .arg(when.toString(job->getDateTimeDisplayFormat()));
-
-    return total;
-}
-
-int16_t Scheduler::getAltitudeScore(SchedulerJob const *job, QDateTime const &when) const
-{
-    // FIXME: block calculating target coordinates at a particular time is duplicated in several places
-
-    // Retrieve the argument date/time, or fall back to current time - don't use QDateTime's timezone!
-    KStarsDateTime ltWhen(when.isValid() ?
-                          Qt::UTC == when.timeSpec() ? geo->UTtoLT(KStarsDateTime(when)) : when :
-                          KStarsData::Instance()->lt());
-
-    // Create a sky object with the target catalog coordinates
-    SkyPoint const target = job->getTargetCoords();
-    SkyObject o;
-    o.setRA0(target.ra0());
-    o.setDec0(target.dec0());
-
-    // Update RA/DEC of the target for the current fraction of the day
-    KSNumbers numbers(ltWhen.djd());
-    o.updateCoordsNow(&numbers);
-
-    // Compute local sidereal time for the current fraction of the day, calculate altitude
-    CachingDms const LST = geo->GSTtoLST(geo->LTtoUT(ltWhen).gst());
-    o.EquatorialToHorizontal(&LST, geo->lat());
-    double const altitude = o.alt().Degrees();
-
-    double const SETTING_ALTITUDE_CUTOFF = Options::settingAltitudeCutoff();
-    int16_t score = BAD_SCORE - 1;
-
-    // If altitude is negative, bad score
-    // FIXME: some locations may allow negative altitudes
-    if (altitude < 0)
-    {
-        score = BAD_SCORE;
-    }
-    else if (-90 < job->getMinAltitude())
-    {
-        // If under altitude constraint, bad score
-        if (altitude < job->getMinAltitude())
-            score = BAD_SCORE;
-        // Else if setting and under altitude cutoff, job would end soon after starting, bad score
-        // FIXME: half bad score when under altitude cutoff risk getting positive again
-        else
-        {
-            double offset = LST.Hours() - o.ra().Hours();
-            if (24.0 <= offset)
-                offset -= 24.0;
-            else if (offset < 0.0)
-                offset += 24.0;
-            if (0.0 <= offset && offset < 12.0)
-                if (altitude - SETTING_ALTITUDE_CUTOFF < job->getMinAltitude())
-                    score = BAD_SCORE / 2;
-        }
-    }
-    // If not constrained but below minimum hard altitude, set score to 10% of altitude value
-    else if (altitude < minAltitude->minimum())
-    {
-        score = static_cast <int16_t> (altitude / 10.0);
-    }
-
-    // Else default score calculation without altitude constraint
-    if (score < BAD_SCORE)
-        score = static_cast <int16_t> ((1.5 * pow(1.06, altitude)) - (minAltitude->minimum() / 10.0));
-
-    //qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' target altitude is %3 degrees at %2 (score %4).")
-    //    .arg(job->getName())
-    //    .arg(when.toString(job->getDateTimeDisplayFormat()))
-    //    .arg(currentAlt, 0, 'f', minAltitude->decimals())
-    //    .arg(QString::asprintf("%+d", score));
-
-    return score;
-}
-
-double Scheduler::getCurrentMoonSeparation(SchedulerJob const *job) const
-{
-    // FIXME: block calculating target coordinates at a particular time is duplicated in several places
-
-    // Retrieve the argument date/time, or fall back to current time - don't use QDateTime's timezone!
-    KStarsDateTime ltWhen(KStarsData::Instance()->lt());
-
-    // Create a sky object with the target catalog coordinates
-    SkyPoint const target = job->getTargetCoords();
-    SkyObject o;
-    o.setRA0(target.ra0());
-    o.setDec0(target.dec0());
-
-    // Update RA/DEC of the target for the current fraction of the day
-    KSNumbers numbers(ltWhen.djd());
-    o.updateCoordsNow(&numbers);
-
-    // Update moon
-    //ut = geo->LTtoUT(ltWhen);
-    //KSNumbers ksnum(ut.djd()); // BUG: possibly LT.djd() != UT.djd() because of translation
-    //LST = geo->GSTtoLST(ut.gst());
-    CachingDms LST = geo->GSTtoLST(geo->LTtoUT(ltWhen).gst());
-    moon->updateCoords(&numbers, true, geo->lat(), &LST, true);
-
-    // Moon/Sky separation p
-    return moon->angularDistanceTo(&o).Degrees();
-}
-
-int16_t Scheduler::getMoonSeparationScore(SchedulerJob const *job, QDateTime const &when) const
-{
-    // FIXME: block calculating target coordinates at a particular time is duplicated in several places
-
-    // Retrieve the argument date/time, or fall back to current time - don't use QDateTime's timezone!
-    KStarsDateTime ltWhen(when.isValid() ?
-                          Qt::UTC == when.timeSpec() ? geo->UTtoLT(KStarsDateTime(when)) : when :
-                          KStarsData::Instance()->lt());
-
-    // Create a sky object with the target catalog coordinates
-    SkyPoint const target = job->getTargetCoords();
-    SkyObject o;
-    o.setRA0(target.ra0());
-    o.setDec0(target.dec0());
-
-    // Update RA/DEC of the target for the current fraction of the day
-    KSNumbers numbers(ltWhen.djd());
-    o.updateCoordsNow(&numbers);
-
-    // Update moon
-    //ut = geo->LTtoUT(ltWhen);
-    //KSNumbers ksnum(ut.djd()); // BUG: possibly LT.djd() != UT.djd() because of translation
-    //LST = geo->GSTtoLST(ut.gst());
-    CachingDms LST = geo->GSTtoLST(geo->LTtoUT(ltWhen).gst());
-    moon->updateCoords(&numbers, true, geo->lat(), &LST, true);
-
-    double const moonAltitude = moon->alt().Degrees();
-
-    // Lunar illumination %
-    double const illum = moon->illum() * 100.0;
-
-    // Moon/Sky separation p
-    double const separation = moon->angularDistanceTo(&o).Degrees();
-
-    // Zenith distance of the moon
-    double const zMoon = (90 - moonAltitude);
-    // Zenith distance of target
-    double const zTarget = (90 - o.alt().Degrees());
-
-    int16_t score = 0;
-
-    // If target = Moon, or no illuminiation, or moon below horizon, return static score.
-    if (zMoon == zTarget || illum == 0 || zMoon >= 90)
-        score = 100;
-    else
-    {
-        // JM: Some magic voodoo formula I came up with!
-        double moonEffect = (pow(separation, 1.7) * pow(zMoon, 0.5)) / (pow(zTarget, 1.1) * pow(illum, 0.5));
-
-        // Limit to 0 to 100 range.
-        moonEffect = KSUtils::clamp(moonEffect, 0.0, 100.0);
-
-        if (job->getMinMoonSeparation() > 0)
-        {
-            if (separation < job->getMinMoonSeparation())
-                score = BAD_SCORE * 5;
-            else
-                score = moonEffect;
-        }
-        else
-            score = moonEffect;
-    }
-
-    // Limit to 0 to 20
-    score /= 5.0;
-
-    //qCDebug(KSTARS_EKOS_SCHEDULER) << QString("Job '%1' target is %L3 degrees from Moon (score %2).")
-    //    .arg(job->getName())
-    //    .arg(separation, 0, 'f', 3)
-    //    .arg(QString::asprintf("%+d", score));
-
-    return score;
-}
-
-void Scheduler::calculateDawnDusk()
-{
-    KSAlmanac ksal;
-    Dawn = ksal.getDawnAstronomicalTwilight();
-    Dusk = ksal.getDuskAstronomicalTwilight();
-
-    QTime now  = KStarsData::Instance()->lt().time();
-    QTime dawn = QTime(0, 0, 0).addSecs(Dawn * 24 * 3600);
-    QTime dusk = QTime(0, 0, 0).addSecs(Dusk * 24 * 3600);
-
-    duskDateTime.setDate(KStars::Instance()->data()->lt().date());
-    duskDateTime.setTime(dusk);
-
-    // FIXME: reduce spam by moving twilight time to a text label
-    //appendLogText(i18n("Astronomical twilight: dusk at %1, dawn at %2, and current time is %3",
-    //                   dusk.toString(), dawn.toString(), now.toString()));
 }
 
 void Scheduler::executeJob(SchedulerJob *job)
@@ -2559,7 +2076,7 @@ void Scheduler::executeJob(SchedulerJob *job)
         captureInterface->setProperty("targetName", job->getName().replace(' ', ""));
     }
 
-    updatePreDawn();
+    strategy->updatePreDawn();
 
     qCInfo(KSTARS_EKOS_SCHEDULER) << "Executing Job " << currentJob->getName();
 
@@ -3396,7 +2913,7 @@ void Scheduler::checkJobStage()
         SkyPoint p = currentJob->getTargetCoords();
         p.EquatorialToHorizontal(KStarsData::Instance()->lst(), geo->lat());
 
-        double moonSeparation = getCurrentMoonSeparation(currentJob);
+        double moonSeparation = strategy->getCurrentMoonSeparation(currentJob);
 
         if (moonSeparation < currentJob->getMinMoonSeparation())
         {
@@ -3417,7 +2934,7 @@ void Scheduler::checkJobStage()
     }
 
     // #4 Check if we're not at dawn
-    if (currentJob->getEnforceTwilight() && now > KStarsDateTime(preDawnDateTime))
+    if (currentJob->getEnforceTwilight() && now > KStarsDateTime(strategy->getPreDawnDateTime()))
     {
         // If either mount or dome are not parked, we shutdown if we approach dawn
         if (isMountParked() == false || (parkDomeCheck->isEnabled() && isDomeParked() == false))
@@ -3425,7 +2942,7 @@ void Scheduler::checkJobStage()
             // Minute is a DOUBLE value, do not use i18np
             appendLogText(i18n(
                               "Job '%3' is now approaching astronomical twilight rise limit at %1 (%2 minutes safety margin), marking aborted.",
-                              preDawnDateTime.toString(), Options::preDawnTime(), currentJob->getName()));
+                              strategy->getPreDawnDateTime().toString(), Options::preDawnTime(), currentJob->getName()));
             currentJob->setState(SchedulerJob::JOB_ABORTED);
             stopCurrentJobAction();
             stopGuiding();
@@ -5996,48 +5513,6 @@ void Scheduler::sortJobsPerAltitude()
     }
 }
 
-void Scheduler::updatePreDawn()
-{
-    double earlyDawn = Dawn - Options::preDawnTime() / (60.0 * 24.0);
-    int dayOffset    = 0;
-    QTime dawn       = QTime(0, 0, 0).addSecs(Dawn * 24 * 3600);
-    if (KStarsData::Instance()->lt().time() >= dawn)
-        dayOffset = 1;
-    preDawnDateTime.setDate(KStarsData::Instance()->lt().date().addDays(dayOffset));
-    preDawnDateTime.setTime(QTime::fromMSecsSinceStartOfDay(earlyDawn * 24 * 3600 * 1000));
-}
-
-bool Scheduler::isWeatherOK(SchedulerJob *job)
-{
-    if (weatherStatus == IPS_OK || weatherCheck->isChecked() == false)
-        return true;
-    else if (weatherStatus == IPS_IDLE)
-    {
-        if (indiState == INDI_READY)
-            appendLogText(i18n("Weather information is pending..."));
-        return true;
-    }
-
-    // Temporary BUSY is ALSO accepted for now
-    // TODO Figure out how to exactly handle this
-    if (weatherStatus == IPS_BUSY)
-        return true;
-
-    if (weatherStatus == IPS_ALERT)
-    {
-        job->setState(SchedulerJob::JOB_ABORTED);
-        appendLogText(i18n("Job '%1' suffers from bad weather, marking aborted.", job->getName()));
-    }
-    /*else if (weatherStatus == IPS_BUSY)
-    {
-        appendLogText(i18n("%1 observation job delayed due to bad weather.", job->getName()));
-        schedulerTimer.stop();
-        connect(this, &Scheduler::weatherChanged, this, &Scheduler::resumeCheckStatus);
-    }*/
-
-    return false;
-}
-
 void Scheduler::resumeCheckStatus()
 {
     disconnect(this, &Scheduler::weatherChanged, this, &Scheduler::resumeCheckStatus);
@@ -6058,7 +5533,7 @@ void Scheduler::startMosaicTool()
 
     if (decOk == false)
     {
-        appendLogText(i18n("Warning: DEC value %1 is invalid.", decBox->text()));
+        qCInfo(KSTARS_EKOS_SCHEDULER) << i18n("Warning: DEC value %1 is invalid.", decBox->text());
         return;
     }
 
@@ -7117,24 +6592,24 @@ void Scheduler::setWeatherStatus(uint32_t status)
             break;
     }
 
-    if (newStatus != weatherStatus)
+    if (newStatus != strategy->getWeatherStatus())
     {
-        weatherStatus = newStatus;
+        strategy->setWeatherStatus(newStatus);
 
         qCDebug(KSTARS_EKOS_SCHEDULER) << statusString;
 
-        if (weatherStatus == IPS_OK)
+        if (newStatus == IPS_OK)
             weatherLabel->setPixmap(
                 QIcon::fromTheme("security-high")
                 .pixmap(QSize(32, 32)));
-        else if (weatherStatus == IPS_BUSY)
+        else if (newStatus == IPS_BUSY)
         {
             weatherLabel->setPixmap(
                 QIcon::fromTheme("security-medium")
                 .pixmap(QSize(32, 32)));
             KNotification::event(QLatin1String("WeatherWarning"), i18n("Weather conditions in warning zone"));
         }
-        else if (weatherStatus == IPS_ALERT)
+        else if (newStatus == IPS_ALERT)
         {
             weatherLabel->setPixmap(
                 QIcon::fromTheme("security-low")
@@ -7151,10 +6626,10 @@ void Scheduler::setWeatherStatus(uint32_t status)
 
         appendLogText(statusString);
 
-        emit weatherChanged(weatherStatus);
+        emit weatherChanged(newStatus);
     }
 
-    if (weatherStatus == IPS_ALERT)
+    if (newStatus == IPS_ALERT)
     {
         appendLogText(i18n("Starting shutdown procedure due to severe weather."));
         if (currentJob)

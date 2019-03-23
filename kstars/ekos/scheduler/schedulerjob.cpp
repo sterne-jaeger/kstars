@@ -47,7 +47,7 @@ void SchedulerJob::setStartupTime(const QDateTime &value)
         startupCondition = fileStartupCondition;
 
     // Refresh altitude - invalid date/time is taken care of when rendering
-    altitudeAtStartup = Ekos::Scheduler::findAltitude(targetCoords, startupTime, &isSettingAtStartup);
+    altitudeAtStartup = Ekos::ScheduleStrategy::findAltitude(targetCoords, startupTime, &isSettingAtStartup);
 
     /* Refresh estimated time - which update job cells */
     setEstimatedTime(estimatedTime);
@@ -85,21 +85,21 @@ void SchedulerJob::setCompletionTime(const QDateTime &value)
     {
         setCompletionCondition(FINISH_AT);
         completionTime = value;
-        altitudeAtCompletion = Ekos::Scheduler::findAltitude(targetCoords, completionTime, &isSettingAtCompletion);
+        altitudeAtCompletion = Ekos::ScheduleStrategy::findAltitude(targetCoords, completionTime, &isSettingAtCompletion);
         setEstimatedTime(-1);
     }
     /* If completion time is invalid, and job is looping, keep completion time undefined */
     else if (FINISH_LOOP == completionCondition)
     {
         completionTime = QDateTime();
-        altitudeAtCompletion = Ekos::Scheduler::findAltitude(targetCoords, completionTime, &isSettingAtCompletion);
+        altitudeAtCompletion = Ekos::ScheduleStrategy::findAltitude(targetCoords, completionTime, &isSettingAtCompletion);
         setEstimatedTime(-1);
     }
     /* If completion time is invalid, deduce completion from startup and duration */
     else if (startupTime.isValid())
     {
         completionTime = startupTime.addSecs(estimatedTime);
-        altitudeAtCompletion = Ekos::Scheduler::findAltitude(targetCoords, completionTime, &isSettingAtCompletion);
+        altitudeAtCompletion = Ekos::ScheduleStrategy::findAltitude(targetCoords, completionTime, &isSettingAtCompletion);
         updateJobCells();
     }
     /* Else just refresh estimated time - which update job cells */
@@ -332,7 +332,7 @@ void SchedulerJob::setEstimatedTime(const int64_t &value)
     {
         estimatedTime = value;
         completionTime = startupTime.addSecs(value);
-        altitudeAtCompletion = Ekos::Scheduler::findAltitude(targetCoords, completionTime, &isSettingAtCompletion);
+        altitudeAtCompletion = Ekos::ScheduleStrategy::findAltitude(targetCoords, completionTime, &isSettingAtCompletion);
     }
     /* Else estimated time is simply stored as is - covers FINISH_LOOP from setCompletionTime */
     else estimatedTime = value;
@@ -527,7 +527,7 @@ void SchedulerJob::updateJobCells()
     {
         // FIXME: Cache altitude calculations
         bool is_setting = false;
-        double const alt = Ekos::Scheduler::findAltitude(targetCoords, QDateTime(), &is_setting);
+        double const alt = Ekos::ScheduleStrategy::findAltitude(targetCoords, QDateTime(), &is_setting);
 
         altitudeCell->setText(QString("%1%L2°")
                 .arg(QChar(is_setting ? 0x2193 : 0x2191))
@@ -682,12 +682,12 @@ bool SchedulerJob::decreasingAltitudeOrder(SchedulerJob const *job1, SchedulerJo
 {
     bool A_is_setting = job1->isSettingAtStartup;
     double const altA = when.isValid() ?
-        Ekos::Scheduler::findAltitude(job1->getTargetCoords(), when, &A_is_setting) :
+        Ekos::ScheduleStrategy::findAltitude(job1->getTargetCoords(), when, &A_is_setting) :
         job1->altitudeAtStartup;
 
     bool B_is_setting = job2->isSettingAtStartup;
     double const altB = when.isValid() ?
-        Ekos::Scheduler::findAltitude(job2->getTargetCoords(), when, &B_is_setting) :
+        Ekos::ScheduleStrategy::findAltitude(job2->getTargetCoords(), when, &B_is_setting) :
         job2->altitudeAtStartup;
 
     // Sort with the setting target first
