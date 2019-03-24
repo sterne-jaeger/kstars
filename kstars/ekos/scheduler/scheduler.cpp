@@ -1506,7 +1506,6 @@ void Scheduler::evaluateJobs()
     if (sortedJobs.isEmpty() || std::all_of(sortedJobs.begin(), sortedJobs.end(), neither_evaluated_nor_aborted))
     {
         appendLogText(i18n("No jobs left in the scheduler queue."));
-        setCurrentJob(nullptr);
         jobEvaluationOnly = false;
         return;
     }
