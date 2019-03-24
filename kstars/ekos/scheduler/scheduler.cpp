@@ -1502,7 +1502,6 @@ void Scheduler::evaluateJobs()
     if (sortedJobs.isEmpty() || std::all_of(sortedJobs.begin(), sortedJobs.end(), neither_evaluated_nor_aborted))
     {
         appendLogText(i18n("No jobs left in the scheduler queue."));
-        setCurrentJob(nullptr);
         jobEvaluationOnly = false;
         return;
     }
@@ -5109,7 +5108,7 @@ void Scheduler::updateCompletedJobsCount(bool forced)
             QString const signature = oneSeqJob->getSignature();
             /* If frame is LIGHT, how hany do we have left? */
             if (oneSeqJob->getFrameType() == FRAME_LIGHT)
-                lightFramesRequired += oneSeqJob->getCount() - newFramesCount[signature];
+                lightFramesRequired += oneSeqJob->getCount()*oneJob->getRepeatsRequired() - newFramesCount[signature];
         }
         oneJob->setLightFramesRequired(lightFramesRequired > 0);
     }
@@ -5261,8 +5260,6 @@ bool Scheduler::estimateJobTime(SchedulerJob *schedJob)
             // From now on, 'captures_completed' is the number of frames completed for the *current* sequence job
         }
         // Else rely on the captures done during this session
-        else captures_completed = schedJob->getCompletedCount();
-
 
         // Check if we still need any light frames. Because light frames changes the flow of the observatory startup
         // Without light frames, there is no need to do focusing, alignment, guiding...etc
@@ -5316,7 +5313,10 @@ bool Scheduler::estimateJobTime(SchedulerJob *schedJob)
 
     schedJob->setCapturedFramesMap(capture_map);
     schedJob->setSequenceCount(totalSequenceCount);
-    schedJob->setCompletedCount(totalCompletedCount);
+
+    // only in case we remember the job progress, we change the completion count
+    if (rememberJobProgress)
+        schedJob->setCompletedCount(totalCompletedCount);
 
     qDeleteAll(seqJobs);
 
