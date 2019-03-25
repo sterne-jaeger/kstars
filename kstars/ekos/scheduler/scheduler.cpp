@@ -1243,6 +1243,7 @@ void Scheduler::stop()
     setJobManipulation(false, false);
     mosaicB->setEnabled(true);
     evaluateOnlyB->setEnabled(true);
+    queueTable->setEnabled(true);
 }
 
 void Scheduler::start()
@@ -1283,6 +1284,7 @@ void Scheduler::start()
             evaluateOnlyB->setEnabled(false);
             startupB->setEnabled(false);
             shutdownB->setEnabled(false);
+            queueTable->setEnabled(false);
 
             /* Reset and re-evaluate all scheduler jobs, then start the Scheduler */
             startJobEvaluation();
@@ -2569,6 +2571,9 @@ void Scheduler::executeJob(SchedulerJob *job)
         return;
 
     setCurrentJob(job);
+    int index = jobs.indexOf(job);
+    if (index >= 0)
+        queueTable->selectRow(index);
 
     QDateTime const now = KStarsData::Instance()->lt();
 

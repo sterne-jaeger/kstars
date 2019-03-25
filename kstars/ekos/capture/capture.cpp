@@ -2598,6 +2598,8 @@ void Capture::setBusy(bool enable)
 
     foreach (QAbstractButton * button, queueEditButtonGroup->buttons())
         button->setEnabled(!enable);
+
+    queueTable->setEnabled(!enable);
 }
 
 void Capture::prepareJob(SequenceJob * job)
@@ -2605,6 +2607,10 @@ void Capture::prepareJob(SequenceJob * job)
     activeJob = job;
 
     qCDebug(KSTARS_EKOS_CAPTURE) << "Preparing capture job" << job->getSignature() << "for execution.";
+
+    int index = jobs.indexOf(job);
+    if (index >= 0)
+        queueTable->selectRow(index);
 
     if (activeJob->getActiveCCD() != currentCCD)
     {
