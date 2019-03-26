@@ -2551,8 +2551,6 @@ void Capture::setBusy(bool enable)
 
     foreach (QAbstractButton * button, queueEditButtonGroup->buttons())
         button->setEnabled(!enable);
-
-    queueTable->setEnabled(!enable);
 }
 
 void Capture::prepareJob(SequenceJob * job)
@@ -4015,7 +4013,8 @@ void Capture::syncGUIToJob(SequenceJob * job)
 void Capture::selectedJobChanged(QModelIndex current, QModelIndex previous)
 {
     Q_UNUSED(previous);
-    selectJob(current);
+    if (!isBusy)
+        selectJob(current);
 }
 
 void Capture::selectJob(QModelIndex i)
