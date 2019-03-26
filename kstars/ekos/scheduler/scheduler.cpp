@@ -868,6 +868,10 @@ void Scheduler::queueTableSelectionChanged(QModelIndex current, QModelIndex prev
 {
     Q_UNUSED(previous);
 
+    // prevent selection when not idle
+    if (state != SCHEDULER_IDLE)
+        return;
+
     if (current.row() < 0 || (current.row()+1) > jobs.size())
         return;
 
@@ -1241,7 +1245,6 @@ void Scheduler::stop()
     setJobManipulation(false, false);
     mosaicB->setEnabled(true);
     evaluateOnlyB->setEnabled(true);
-    queueTable->setEnabled(true);
 }
 
 void Scheduler::start()
@@ -1282,7 +1285,6 @@ void Scheduler::start()
             evaluateOnlyB->setEnabled(false);
             startupB->setEnabled(false);
             shutdownB->setEnabled(false);
-            queueTable->setEnabled(false);
 
             /* Reset and re-evaluate all scheduler jobs, then start the Scheduler */
             startJobEvaluation();

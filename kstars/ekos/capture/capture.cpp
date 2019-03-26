@@ -2598,8 +2598,6 @@ void Capture::setBusy(bool enable)
 
     foreach (QAbstractButton * button, queueEditButtonGroup->buttons())
         button->setEnabled(!enable);
-
-    queueTable->setEnabled(!enable);
 }
 
 void Capture::prepareJob(SequenceJob * job)
