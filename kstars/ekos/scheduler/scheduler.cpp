@@ -1506,6 +1506,7 @@ void Scheduler::evaluateJobs()
     if (sortedJobs.isEmpty() || std::all_of(sortedJobs.begin(), sortedJobs.end(), neither_evaluated_nor_aborted))
     {
         appendLogText(i18n("No jobs left in the scheduler queue."));
+        setCurrentJob(nullptr);
         jobEvaluationOnly = false;
         return;
     }
@@ -4729,15 +4730,18 @@ void Scheduler::findNextJob()
         evaluateJobs();
 
         /* If current job is actually complete because of previous duplicates, prepare for next job */
-        if (currentJob->getRepeatsRemaining() == 0)
+        if (currentJob == nullptr || currentJob->getRepeatsRemaining() == 0)
         {
             stopCurrentJobAction();
             stopGuiding();
 
-            appendLogText(i18np("Job '%1' is complete after #%2 batch.",
-                                "Job '%1' is complete after #%2 batches.",
-                                currentJob->getName(), currentJob->getRepeatsRequired()));
-            setCurrentJob(nullptr);
+            if (currentJob != nullptr)
+            {
+                appendLogText(i18np("Job '%1' is complete after #%2 batch.",
+                                    "Job '%1' is complete after #%2 batches.",
+                                    currentJob->getName(), currentJob->getRepeatsRequired()));
+                setCurrentJob(nullptr);
+            }
             schedulerTimer.start();
         }
         /* If job requires more work, continue current observation */
@@ -5160,6 +5164,11 @@ bool Scheduler::estimateJobTime(SchedulerJob *schedJob)
     int totalSequenceCount = 0, totalCompletedCount = 0;
     double totalImagingTime  = 0;
 
+    // Determine number of captures in the scheduler job
+    int capturesPerRepeat = 0;
+    foreach (SequenceJob *seqJob, seqJobs)
+        capturesPerRepeat += seqJob->getCount();
+
     // Loop through sequence jobs to calculate the number of required frames and estimate duration.
     foreach (SequenceJob *seqJob, seqJobs)
     {
@@ -5267,6 +5276,8 @@ bool Scheduler::estimateJobTime(SchedulerJob *schedJob)
             // From now on, 'captures_completed' is the number of frames completed for the *current* sequence job
         }
         // Else rely on the captures done during this session
+        else
+            captures_completed = schedJob->getCompletedCount() / capturesPerRepeat * seqJob->getCount();
 
         // Check if we still need any light frames. Because light frames changes the flow of the observatory startup
         // Without light frames, there is no need to do focusing, alignment, guiding...etc
