@@ -5056,15 +5056,15 @@ void Scheduler::updateCompletedJobsCount(bool forced)
             newFramesCount[signature] = getCompletedFiles(signature, oneSeqJob->getFullPrefix());
         }
 
-        int lightFramesRequired = 0;
+        bool lightFramesRequired = false;
         for (SequenceJob *oneSeqJob : seqjobs)
         {
             QString const signature = oneSeqJob->getSignature();
             /* If frame is LIGHT, how hany do we have left? */
-            if (oneSeqJob->getFrameType() == FRAME_LIGHT)
-                lightFramesRequired += oneSeqJob->getCount()*oneJob->getRepeatsRequired() - newFramesCount[signature];
+            if (oneSeqJob->getFrameType() == FRAME_LIGHT && oneSeqJob->getCount()*oneJob->getRepeatsRequired() > newFramesCount[signature])
+                lightFramesRequired = true;
         }
-        oneJob->setLightFramesRequired(lightFramesRequired > 0);
+        oneJob->setLightFramesRequired(lightFramesRequired);
     }
 
     capturedFramesCount = newFramesCount;
