@@ -1526,6 +1526,14 @@
          <label>Enable mount altitude limits.</label>
          <default>false</default>
       </entry>
+      <entry name="MeridianFlipOffset" type="Double">
+         <label>Default hour angle to perform meridian flip</label>
+         <whatsthis>If the target hour angle exceeds this value, Ekos will command a meridian flip and if successful it will resume guiding and capture operations.</whatsthis>
+      </entry>
+      <entry name="ExecuteMeridianFlip" type="Bool">
+         <label>Flips the mount when reaching the meridian, if supported.</label>
+         <default>false</default>
+      </entry>
    </group>
    <group name="Capture">
       <entry name="DefaultCaptureCCD" type="String">
