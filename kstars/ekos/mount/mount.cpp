@@ -86,6 +86,8 @@ Mount::Mount()
     altLimitEnabled = enableLimitsCheck->isChecked();
 
     // meridian flip
+    meridianFlipCheckBox->setChecked(Options::executeMeridianFlip());
+    meridianFlipTimeBox->setValue(Options::meridianFlipOffset());
     connect(meridianFlipCheckBox, &QCheckBox::toggled, this, &Ekos::Mount::meridianFlipSetupChanged);
     connect(meridianFlipTimeBox, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this, &Ekos::Mount::meridianFlipSetupChanged);
 
@@ -606,6 +608,8 @@ void Mount::meridianFlipSetupChanged()
         setMeridianFlipStatus(FLIP_NONE);
 
     emit newMeridianFlipSetup(meridianFlipCheckBox->isChecked(), meridianFlipTimeBox->value());
+    Options::setExecuteMeridianFlip(meridianFlipCheckBox->isChecked());
+    Options::setMeridianFlipOffset(meridianFlipTimeBox->value());
 }
 
 
