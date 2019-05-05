@@ -599,6 +599,8 @@ void Mount::setMeridianFlipValues(bool activate, double hours)
 {
     meridianFlipCheckBox->setChecked(activate);
     meridianFlipTimeBox->setValue(hours);
+    Options::setExecuteMeridianFlip(meridianFlipCheckBox->isChecked());
+    Options::setMeridianFlipOffset(meridianFlipTimeBox->value());
 }
 
 void Mount::meridianFlipSetupChanged()
@@ -607,7 +609,6 @@ void Mount::meridianFlipSetupChanged()
         // reset meridian flip
         setMeridianFlipStatus(FLIP_NONE);
 
-    emit newMeridianFlipSetup(meridianFlipCheckBox->isChecked(), meridianFlipTimeBox->value());
     Options::setExecuteMeridianFlip(meridianFlipCheckBox->isChecked());
     Options::setMeridianFlipOffset(meridianFlipTimeBox->value());
 }
