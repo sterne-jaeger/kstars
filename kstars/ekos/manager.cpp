@@ -431,6 +431,7 @@ void Manager::reset()
     alignProcess.reset();
     mountProcess.reset();
     weatherProcess.reset();
+    observatoryProcess.reset();
     dustCapProcess.reset();
 
     Ekos::CommunicationStatus previousStatus = m_ekosStatus;
@@ -2222,6 +2223,7 @@ void Manager::initDome()
         ekosLiveClient.get()->message()->updateDomeStatus(status);
     });
 
+    initObservatory(nullptr, domeProcess.get());
     emit newModule("Dome");
 
     ekosLiveClient->message()->sendDomes();
@@ -2233,8 +2235,29 @@ void Manager::initWeather()
         return;
 
     weatherProcess.reset(new Ekos::Weather());
+    initObservatory(weatherProcess.get(), nullptr);
 
     emit newModule("Weather");
+}
+
+void Manager::initObservatory(Weather *weather, Dome *dome)
+{
+    if (observatoryProcess.get() != nullptr)
+        return;
+
+    // Initialize the Observatory Module
+    observatoryProcess.reset(new Ekos::Observatory());
+    int index = toolsWidget->addTab(observatoryProcess.get(), QIcon(":/icons/ekos_observatory.png"), "");
+    toolsWidget->tabBar()->setTabToolTip(index, i18n("Observatory"));
+
+    Observatory *obs = observatoryProcess.get();
+    if (weather != nullptr)
+        obs->getModel()->initModel(weather);
+    if (dome != nullptr)
+        obs->getModel()->initModel(dome);
+
+    emit newModule("Observatory");
+
 }
 
 void Manager::initDustCap()
@@ -2293,6 +2316,7 @@ void Manager::removeTabs()
     mountProcess.reset();
     domeProcess.reset();
     weatherProcess.reset();
+    observatoryProcess.reset();
     dustCapProcess.reset();
 
     managedDevices.clear();
