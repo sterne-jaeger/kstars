@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Observatory</class>
+ <widget class="QWidget" name="Observatory">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>855</width>
+    <height>421</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_2">
+   <item row="0" column="0" alignment="Qt::AlignTop">
+    <widget class="QGroupBox" name="ObservatoryBox">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Observatory</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="domeBox">
+        <property name="title">
+         <string>Dome</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_3">
+         <item row="0" column="0">
+          <widget class="QPushButton" name="domeParked">
+           <property name="minimumSize">
+            <size>
+             <width>72</width>
+             <height>48</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>72</width>
+             <height>48</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton:checked
+{
+background-color: maroon;
+border: 1px outset;
+font-weight:bold;
+}</string>
+           </property>
+           <property name="text">
+            <string>PARKED</string>
+           </property>
+           <property name="iconSize">
+            <size>
+             <width>32</width>
+             <height>16</height>
+            </size>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QPushButton" name="domeOn">
+           <property name="minimumSize">
+            <size>
+             <width>72</width>
+             <height>48</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>72</width>
+             <height>48</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton:checked
+{
+background-color: maroon;
+border: 1px outset;
+font-weight:bold;
+}</string>
+           </property>
+           <property name="text">
+            <string>ON</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <item alignment="Qt::AlignRight">
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Angle</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="domeAngleSpinBox"/>
+           </item>
+           <item>
+            <widget class="QPushButton" name="setDomeAngleButton">
+             <property name="minimumSize">
+              <size>
+               <width>72</width>
+               <height>24</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>72</width>
+               <height>24</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Set</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="3" column="0" alignment="Qt::AlignLeft">
+       <widget class="QGroupBox" name="shutterBox">
+        <property name="title">
+         <string>Shutter</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_4">
+         <item row="0" column="0">
+          <widget class="QPushButton" name="shutterClosed">
+           <property name="minimumSize">
+            <size>
+             <width>72</width>
+             <height>48</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>72</width>
+             <height>48</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton:checked
+{
+background-color: maroon;
+border: 1px outset;
+font-weight:bold;
+}</string>
+           </property>
+           <property name="text">
+            <string>CLOSED</string>
+           </property>
+           <property name="iconSize">
+            <size>
+             <width>32</width>
+             <height>16</height>
+            </size>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QPushButton" name="shutterOpen">
+           <property name="minimumSize">
+            <size>
+             <width>72</width>
+             <height>48</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>72</width>
+             <height>48</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton:checked
+{
+background-color: maroon;
+border: 1px outset;
+font-weight:bold;
+}</string>
+           </property>
+           <property name="text">
+            <string>OPEN</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="0" column="1" alignment="Qt::AlignTop">
+    <widget class="QGroupBox" name="WeatherBox">
+     <property name="title">
+      <string>Weather</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_5">
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="weatherEdit"/>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="windEdit"/>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Wind (km/h)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Weather</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Temperature (̣°C)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="temperatureEdit"/>
+      </item>
+     </layout>
+     <zorder>label</zorder>
+     <zorder>ObservatoryBox</zorder>
+     <zorder>label_2</zorder>
+     <zorder>weatherEdit</zorder>
+     <zorder>label_3</zorder>
+     <zorder>windEdit</zorder>
+     <zorder>label_4</zorder>
+     <zorder>temperatureEdit</zorder>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="1">
+    <spacer name="horizontalSpacer_2">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -127,6 +127,7 @@ if (INDI_FOUND)
             ekos/guide/opscalibration.ui
             ekos/guide/opsguide.ui
             ekos/guide/manualdither.ui
+            ekos/observatory/observatory.ui
             #TODO remove from GIT
             #ekos/guide/guider.ui
             #ekos/guide/rcalibration.ui
@@ -202,6 +203,12 @@ if (INDI_FOUND)
             # External Guide
             ekos/guide/externalguide/phd2.cpp
             ekos/guide/externalguide/linguider.cpp
+
+            #Observatory
+            ekos/observatory/observatory.cpp
+            ekos/observatory/observatorymodel.cpp
+            ekos/observatory/observatorydomemodel.cpp
+            ekos/observatory/observatoryweathermodel.cpp
 
             # Ekos Live
             ekos/ekoslive/ekosliveclient.cpp
