@@ -2242,19 +2242,19 @@ void Manager::initWeather()
 
 void Manager::initObservatory(Weather *weather, Dome *dome)
 {
-    if (observatoryProcess.get() != nullptr)
-        return;
-
-    // Initialize the Observatory Module
-    observatoryProcess.reset(new Ekos::Observatory());
-    int index = toolsWidget->addTab(observatoryProcess.get(), QIcon(":/icons/ekos_observatory.png"), "");
-    toolsWidget->tabBar()->setTabToolTip(index, i18n("Observatory"));
+    if (observatoryProcess.get() == nullptr)
+    {
+        // Initialize the Observatory Module
+        observatoryProcess.reset(new Ekos::Observatory());
+        int index = toolsWidget->addTab(observatoryProcess.get(), QIcon(":/icons/ekos_observatory.png"), "");
+        toolsWidget->tabBar()->setTabToolTip(index, i18n("Observatory"));
+    }
 
     Observatory *obs = observatoryProcess.get();
     if (weather != nullptr)
-        obs->getModel()->initModel(weather);
+        obs->getWeatherModel()->initModel(weather);
     if (dome != nullptr)
-        obs->getModel()->initModel(dome);
+        obs->getDomeModel()->initModel(dome);
 
     emit newModule("Observatory");
 

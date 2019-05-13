@@ -14,6 +14,20 @@ namespace Ekos
 void ObservatoryWeatherModel::initModel(Weather *weather)
 {
     mWeather = weather;
+
+    connect(mWeather, &Weather::ready, this, &ObservatoryWeatherModel::ready);
+    connect(mWeather, &Weather::newStatus, this, &ObservatoryWeatherModel::newStatus);
+
+    if (mWeather->status() != ISD::Weather::WEATHER_IDLE)
+        emit ready();
 }
 
+ISD::Weather::Status ObservatoryWeatherModel::status()
+{
+    if (mWeather == nullptr)
+        return ISD::Weather::WEATHER_IDLE;
+
+    return mWeather->status();
 }
+
+} // Ekos
