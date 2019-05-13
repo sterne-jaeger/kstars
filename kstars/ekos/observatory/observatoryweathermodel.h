@@ -9,20 +9,31 @@
 #pragma once
 
 #include "../auxiliary/weather.h"
+#include "indiweather.h"
 
+#include <QObject>
 
 namespace Ekos
 {
 
-class ObservatoryWeatherModel
+class ObservatoryWeatherModel : public QObject
 {
+
+    Q_OBJECT
+
 public:
     ObservatoryWeatherModel() = default;
 
     void initModel(Weather *weather);
+    ISD::Weather::Status status();
 
 private:
     Weather *mWeather;
+
+signals:
+    void newStatus(ISD::Weather::Status state);
+    void ready();
+
 };
 
 }

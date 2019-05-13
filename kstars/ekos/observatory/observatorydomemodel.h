@@ -10,12 +10,17 @@
 
 #include "../auxiliary/dome.h"
 
+#include <QObject>
+
 
 namespace Ekos
 {
 
-class ObservatoryDomeModel
+class ObservatoryDomeModel: public QObject
 {
+
+    Q_OBJECT
+
 public:
     ObservatoryDomeModel() = default;
 
