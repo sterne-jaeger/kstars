@@ -14,6 +14,19 @@ namespace Ekos
 void ObservatoryDomeModel::initModel(Dome *dome)
 {
     mDome = dome;
+
+    connect(mDome, &Dome::ready, this, &ObservatoryDomeModel::ready);
+    connect(mDome, &Dome::newStatus, this, &ObservatoryDomeModel::newStatus);
+
+}
+
+
+ISD::Dome::Status ObservatoryDomeModel::status()
+{
+    if (mDome == nullptr)
+        return ISD::Dome::DOME_IDLE;
+
+    return mDome->status();
 }
 
 }

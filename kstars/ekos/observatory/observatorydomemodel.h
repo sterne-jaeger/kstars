@@ -26,8 +26,14 @@ public:
 
     void initModel(Dome *dome);
 
+    ISD::Dome::Status status();
+
 private:
     Dome *mDome;
+
+signals:
+    void newStatus(ISD::Dome::Status state);
+    void ready();
 };
 
 }
