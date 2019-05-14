@@ -20,6 +20,70 @@ Observatory::Observatory()
 void Observatory::setDomeModel(ObservatoryDomeModel *model)
 {
     mDomeModel = model;
+    if (model != nullptr)
+    {
+        connect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
+        initDome();
+    }
+    else
+    {
+        shutdownDome();
+        disconnect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
+    }
+}
+
+void Observatory::initDome()
+{
+    domeBox->setEnabled(true);
+    shutterBox->setEnabled(true);
+    /*
+    shutterClosed->setEnabled(true);
+    shutterOpen->setEnabled(true);
+    angleLabel->setEnabled(true);
+    domeAngleSpinBox->setEnabled(true);
+    setDomeAngleButton->setEnabled(true);
+    */
+
+}
+
+void Observatory::shutdownDome()
+{
+    domeBox->setEnabled(false);
+    shutterBox->setEnabled(false);
+    domePark->setEnabled(false);
+    domeUnpark->setEnabled(false);
+    shutterClosed->setEnabled(false);
+    shutterOpen->setEnabled(false);
+    angleLabel->setEnabled(false);
+    domeAngleSpinBox->setEnabled(false);
+    setDomeAngleButton->setEnabled(false);
+}
+
+void Observatory::setDomeStatus(ISD::Dome::Status status)
+{
+
+    switch (status) {
+    case ISD::Dome::DOME_ERROR:
+        break;
+    case ISD::Dome::DOME_IDLE:
+        domePark->setChecked(false);
+        domeUnpark->setChecked(true);
+        break;
+    case ISD::Dome::DOME_MOVING:
+        break;
+    case ISD::Dome::DOME_PARKED:
+        domePark->setChecked(true);
+        domeUnpark->setChecked(false);
+        break;
+    case ISD::Dome::DOME_PARKING:
+        break;
+    case ISD::Dome::DOME_UNPARKING:
+        break;
+    case ISD::Dome::DOME_TRACKING:
+        break;
+    default:
+        break;
+    }
 }
 
 void Observatory::setWeatherModel(ObservatoryWeatherModel *model)
@@ -34,6 +98,7 @@ void Observatory::setWeatherModel(ObservatoryWeatherModel *model)
     else
     {
         shutdownWeather();
+        disconnect(model, &Ekos::ObservatoryWeatherModel::newStatus, this, &Ekos::Observatory::setWeatherStatus);
     }
 }
 

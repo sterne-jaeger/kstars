@@ -39,7 +39,7 @@
         </property>
         <layout class="QGridLayout" name="gridLayout_3">
          <item row="0" column="0">
-          <widget class="QPushButton" name="domeParked">
+          <widget class="QPushButton" name="domePark">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -64,7 +64,7 @@ font-weight:bold;
 }</string>
            </property>
            <property name="text">
-            <string>PARKED</string>
+            <string>PARK</string>
            </property>
            <property name="iconSize">
             <size>
@@ -78,7 +78,7 @@ font-weight:bold;
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="QPushButton" name="domeOn">
+          <widget class="QPushButton" name="domeUnpark">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -103,7 +103,7 @@ font-weight:bold;
 }</string>
            </property>
            <property name="text">
-            <string>ON</string>
+            <string>UNPARK</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
