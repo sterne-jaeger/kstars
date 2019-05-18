@@ -1,4 +1,5 @@
 /*  Ekos Observatory Module
+    Copyright (C) Wolfgang Reissenberger <sterne-jaeger@t-online.de>
 
     This application is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public
@@ -7,6 +8,8 @@
  */
 
 #include "observatory.h"
+
+#include "ekos_observatory_debug.h"
 
 namespace Ekos
 {
@@ -22,13 +25,14 @@ void Observatory::setDomeModel(ObservatoryDomeModel *model)
     mDomeModel = model;
     if (model != nullptr)
     {
+        connect(model, &Ekos::ObservatoryDomeModel::ready, this, &Ekos::Observatory::initDome);
         connect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
-        initDome();
     }
     else
     {
         shutdownDome();
         disconnect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
+        disconnect(model, &Ekos::ObservatoryDomeModel::ready, this, &Ekos::Observatory::initDome);
     }
 }
 
@@ -38,6 +42,8 @@ void Observatory::initDome()
 
     if (mDomeModel != nullptr)
     {
+        connect(mDomeModel, &Ekos::ObservatoryDomeModel::newLog, this, &Ekos::Observatory::appendLogText);
+
         switch (mDomeModel->status()) {
         case ISD::Dome::DOME_PARKED:
             showDomeParked(true);
@@ -48,11 +54,23 @@ void Observatory::initDome()
         default:
             break;
         }
+
+        if (mDomeModel->canPark())
+        {
+            connect(domePark, &QPushButton::clicked, mDomeModel, &Ekos::ObservatoryDomeModel::park);
+            connect(domeUnpark, &QPushButton::clicked, mDomeModel, &Ekos::ObservatoryDomeModel::unpark);
+            domePark->setEnabled(true);
+            domeUnpark->setEnabled(true);
+        }
+        else
+        {
+            domePark->setEnabled(false);
+            domeUnpark->setEnabled(false);
+        }
+
     }
 
     // make invisible, since not implemented yet
-    domePark->setEnabled(false);
-    domeUnpark->setEnabled(false);
     angleLabel->setVisible(false);
     domeAngleSpinBox->setVisible(false);
     setDomeAngleButton->setVisible(false);
@@ -64,7 +82,6 @@ void Observatory::initDome()
     domeAngleSpinBox->setEnabled(true);
     setDomeAngleButton->setEnabled(true);
     */
-
 }
 
 void Observatory::shutdownDome()
@@ -78,6 +95,9 @@ void Observatory::shutdownDome()
     angleLabel->setEnabled(false);
     domeAngleSpinBox->setEnabled(false);
     setDomeAngleButton->setEnabled(false);
+
+    disconnect(domePark, &QPushButton::clicked, mDomeModel, &Ekos::ObservatoryDomeModel::park);
+    disconnect(domeUnpark, &QPushButton::clicked, mDomeModel, &Ekos::ObservatoryDomeModel::unpark);
 }
 
 void Observatory::setDomeStatus(ISD::Dome::Status status)
@@ -87,18 +107,24 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
     case ISD::Dome::DOME_ERROR:
         break;
     case ISD::Dome::DOME_IDLE:
+        appendLogText("Dome is unparked.");
         showDomeParked(false);
         break;
     case ISD::Dome::DOME_MOVING:
+        appendLogText("Dome is moving...");
         break;
     case ISD::Dome::DOME_PARKED:
+        appendLogText("Dome is parked.");
         showDomeParked(true);
         break;
     case ISD::Dome::DOME_PARKING:
+        appendLogText("Dome is parking...");
         break;
     case ISD::Dome::DOME_UNPARKING:
+        appendLogText("Dome is unparking...");
         break;
     case ISD::Dome::DOME_TRACKING:
+        appendLogText("Dome is tracking.");
         break;
     default:
         break;
@@ -156,12 +182,15 @@ void Observatory::setWeatherStatus(ISD::Weather::Status status)
     switch (status) {
     case ISD::Weather::WEATHER_OK:
         label = "security-high";
+        appendLogText("Weather is OK.");
         break;
     case ISD::Weather::WEATHER_WARNING:
         label = "security-medium";
+        appendLogText("Weather WARNING!");
         break;
     case ISD::Weather::WEATHER_ALERT:
         label = "security-low";
+        appendLogText("!! WEATHER ALERT !!");
         break;
     default:
         label = "";
@@ -170,6 +199,23 @@ void Observatory::setWeatherStatus(ISD::Weather::Status status)
 
     weatherStatusLabel->setPixmap(QIcon::fromTheme(label.c_str())
                                   .pixmap(QSize(48, 48)));
+}
+
+
+void Observatory::appendLogText(const QString &text)
+{
+    m_LogText.insert(0, i18nc("log entry; %1 is the date, %2 is the text", "%1 %2",
+                              QDateTime::currentDateTime().toString("yyyy-MM-ddThh:mm:ss"), text));
+
+    qCInfo(KSTARS_EKOS_OBSERVATORY) << text;
+
+    emit newLog(text);
+}
+
+void Observatory::clearLog()
+{
+    m_LogText.clear();
+    emit newLog(QString());
 }
 
 }
