@@ -35,7 +35,28 @@ void Observatory::setDomeModel(ObservatoryDomeModel *model)
 void Observatory::initDome()
 {
     domeBox->setEnabled(true);
-    shutterBox->setEnabled(true);
+
+    if (mDomeModel != nullptr)
+    {
+        switch (mDomeModel->status()) {
+        case ISD::Dome::DOME_PARKED:
+            showDomeParked(true);
+            break;
+        case ISD::Dome::DOME_IDLE:
+            showDomeParked(false);
+            break;
+        default:
+            break;
+        }
+    }
+
+    // make invisible, since not implemented yet
+    domePark->setEnabled(false);
+    domeUnpark->setEnabled(false);
+    angleLabel->setVisible(false);
+    domeAngleSpinBox->setVisible(false);
+    setDomeAngleButton->setVisible(false);
+    shutterBox->setVisible(false);
     /*
     shutterClosed->setEnabled(true);
     shutterOpen->setEnabled(true);
@@ -66,14 +87,12 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
     case ISD::Dome::DOME_ERROR:
         break;
     case ISD::Dome::DOME_IDLE:
-        domePark->setChecked(false);
-        domeUnpark->setChecked(true);
+        showDomeParked(false);
         break;
     case ISD::Dome::DOME_MOVING:
         break;
     case ISD::Dome::DOME_PARKED:
-        domePark->setChecked(true);
-        domeUnpark->setChecked(false);
+        showDomeParked(true);
         break;
     case ISD::Dome::DOME_PARKING:
         break;
@@ -84,6 +103,20 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
     default:
         break;
     }
+}
+
+void Observatory::showDomeParked(bool parked)
+{
+    domePark->setChecked(parked);
+    domePark->setText(parked ? "PARKED" : "PARK");
+    domeUnpark->setChecked(!parked);
+    domeUnpark->setText(parked ? "UNPARK" : "UNPARKED");
+}
+
+void Observatory::setDomeParked(bool parked)
+{
+    showDomeParked(parked);
+
 }
 
 void Observatory::setWeatherModel(ObservatoryWeatherModel *model)
