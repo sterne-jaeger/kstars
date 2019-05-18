@@ -1,4 +1,5 @@
 /*  Ekos Observatory Module
+    Copyright (C) Wolfgang Reissenberger <sterne-jaeger@t-online.de>
 
     This application is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public
@@ -28,5 +29,25 @@ ISD::Dome::Status ObservatoryDomeModel::status()
 
     return mDome->status();
 }
+
+void ObservatoryDomeModel::park()
+{
+    if (mDome == nullptr)
+        return;
+
+    emit newLog("Parking dome...");
+    mDome->park();
+}
+
+
+void ObservatoryDomeModel::unpark()
+{
+    if (mDome == nullptr)
+        return;
+
+    emit newLog("Unparking dome...");
+    mDome->unpark();
+}
+
 
 }

@@ -1,4 +1,5 @@
 /*  Ekos Observatory Module
+    Copyright (C) Wolfgang Reissenberger <sterne-jaeger@t-online.de>
 
     This application is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public

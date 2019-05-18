@@ -1871,8 +1871,10 @@ void Manager::updateLog()
         ekosLogOut->setPlainText(guideProcess->getLogText());
     else if (currentWidget == mountProcess.get())
         ekosLogOut->setPlainText(mountProcess->getLogText());
-    if (currentWidget == schedulerProcess.get())
+    else if (currentWidget == schedulerProcess.get())
         ekosLogOut->setPlainText(schedulerProcess->getLogText());
+    else if (currentWidget == observatoryProcess.get())
+        ekosLogOut->setPlainText(observatoryProcess->getLogText());
 
 #ifdef Q_OS_OSX
     repaint(); //This is a band-aid for a bug in QT 5.10.0
@@ -2248,6 +2250,7 @@ void Manager::initObservatory(Weather *weather, Dome *dome)
         observatoryProcess.reset(new Ekos::Observatory());
         int index = toolsWidget->addTab(observatoryProcess.get(), QIcon(":/icons/ekos_observatory.png"), "");
         toolsWidget->tabBar()->setTabToolTip(index, i18n("Observatory"));
+        connect(observatoryProcess.get(), &Ekos::Observatory::newLog, this, &Ekos::Manager::updateLog);
     }
 
     Observatory *obs = observatoryProcess.get();
