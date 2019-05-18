@@ -29,6 +29,8 @@ public:
 private:
     ObservatoryDomeModel *mDomeModel;
     void setDomeModel(ObservatoryDomeModel *model);
+    void showDomeParked(bool parked);
+    void setDomeParked(bool parked);
 
     ObservatoryWeatherModel *mWeatherModel;
     void setWeatherModel(ObservatoryWeatherModel *model);
