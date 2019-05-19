@@ -25,6 +25,8 @@ namespace Ekos
 class Observatory : public QWidget, public Ui::Observatory
 {
     Q_OBJECT
+    Q_CLASSINFO("D-Bus Interface", "org.kde.kstars.Ekos.Observatory")
+    Q_PROPERTY(QStringList logText READ logText NOTIFY newLog)
 
 public:
     Observatory();
@@ -32,6 +34,7 @@ public:
     ObservatoryWeatherModel *getWeatherModel() { return mWeatherModel; }
 
     // Logging
+    QStringList logText() { return m_LogText; }
     QString getLogText() { return m_LogText.join("\n"); }
 
 signals:
