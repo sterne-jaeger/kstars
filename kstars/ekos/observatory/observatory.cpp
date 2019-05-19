@@ -46,17 +46,6 @@ void Observatory::initDome()
     {
         connect(mDomeModel, &Ekos::ObservatoryDomeModel::newLog, this, &Ekos::Observatory::appendLogText);
 
-        switch (mDomeModel->status()) {
-        case ISD::Dome::DOME_PARKED:
-            showDomeParked(true);
-            break;
-        case ISD::Dome::DOME_IDLE:
-            showDomeParked(false);
-            break;
-        default:
-            break;
-        }
-
         if (mDomeModel->canPark())
         {
             connect(domePark, &QPushButton::clicked, mDomeModel, &Ekos::ObservatoryDomeModel::park);
@@ -83,6 +72,7 @@ void Observatory::initDome()
             shutterBox->setVisible(false);
         }
 
+        setDomeStatus(mDomeModel->status());
         setShutterStatus(mDomeModel->shutterStatus());
     }
 
@@ -110,25 +100,34 @@ void Observatory::shutdownDome()
 
 void Observatory::setDomeStatus(ISD::Dome::Status status)
 {
-
     switch (status) {
     case ISD::Dome::DOME_ERROR:
         break;
     case ISD::Dome::DOME_IDLE:
+        domePark->setChecked(false);
+        domePark->setText("PARK");
+        domeUnpark->setChecked(true);
+        domeUnpark->setText("UNPARKED");
         appendLogText("Dome is unparked.");
-        showDomeParked(false);
         break;
     case ISD::Dome::DOME_MOVING:
         appendLogText("Dome is moving...");
         break;
     case ISD::Dome::DOME_PARKED:
+        domePark->setChecked(true);
+        domePark->setText("PARKED");
+        domeUnpark->setChecked(false);
+        domeUnpark->setText("UNPARK");
         appendLogText("Dome is parked.");
-        showDomeParked(true);
         break;
     case ISD::Dome::DOME_PARKING:
+        domePark->setText("PARKING");
+        domeUnpark->setText("UNPARK");
         appendLogText("Dome is parking...");
         break;
     case ISD::Dome::DOME_UNPARKING:
+        domePark->setText("PARK");
+        domeUnpark->setText("UNPARKING");
         appendLogText("Dome is unparking...");
         break;
     case ISD::Dome::DOME_TRACKING:
@@ -139,19 +138,6 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
     }
 }
 
-void Observatory::showDomeParked(bool parked)
-{
-    domePark->setChecked(parked);
-    domePark->setText(parked ? "PARKED" : "PARK");
-    domeUnpark->setChecked(!parked);
-    domeUnpark->setText(parked ? "UNPARK" : "UNPARKED");
-}
-
-void Observatory::setDomeParked(bool parked)
-{
-    showDomeParked(parked);
-
-}
 
 void Observatory::setShutterStatus(ISD::Dome::ShutterStatus status)
 {

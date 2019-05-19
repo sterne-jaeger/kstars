@@ -40,8 +40,6 @@ signals:
 private:
     ObservatoryDomeModel *mDomeModel;
     void setDomeModel(ObservatoryDomeModel *model);
-    void showDomeParked(bool parked);
-    void setDomeParked(bool parked);
 
     ObservatoryWeatherModel *mWeatherModel;
     void setWeatherModel(ObservatoryWeatherModel *model);
@@ -58,8 +56,8 @@ private slots:
 
     void initDome();
     void shutdownDome();
-    void setDomeStatus(ISD::Dome::Status status);
 
+    void setDomeStatus(ISD::Dome::Status status);
     void setShutterStatus(ISD::Dome::ShutterStatus status);
 };
 }
