@@ -73,6 +73,10 @@ void Observatory::initDome()
         if (mDomeModel->hasShutter())
         {
             shutterBox->setVisible(true);
+            connect(shutterOpen, &QPushButton::clicked, mDomeModel, &Ekos::ObservatoryDomeModel::openShutter);
+            connect(shutterClosed, &QPushButton::clicked, mDomeModel, &Ekos::ObservatoryDomeModel::closeShutter);
+            shutterClosed->setEnabled(true);
+            shutterOpen->setEnabled(true);
         }
         else
         {
@@ -80,10 +84,6 @@ void Observatory::initDome()
         }
 
         setShutterStatus(mDomeModel->shutterStatus());
-
-        // shutter control not implemented yet
-        shutterClosed->setEnabled(false);
-        shutterOpen->setEnabled(false);
     }
 
     // make invisible, since not implemented yet
@@ -160,19 +160,23 @@ void Observatory::setShutterStatus(ISD::Dome::ShutterStatus status)
         shutterOpen->setChecked(true);
         shutterClosed->setChecked(false);
         shutterOpen->setText("OPEN");
+        shutterClosed->setText("CLOSE");
         appendLogText("Shutter is open.");
         break;
     case ISD::Dome::SHUTTER_OPENING:
         shutterOpen->setText("OPENING");
+        shutterClosed->setText("CLOSED");
         appendLogText("Shutter is opening...");
         break;
     case ISD::Dome::SHUTTER_CLOSED:
         shutterOpen->setChecked(false);
         shutterClosed->setChecked(true);
+        shutterOpen->setText("OPEN");
         shutterClosed->setText("CLOSED");
         appendLogText("Shutter is closed.");
         break;
     case ISD::Dome::SHUTTER_CLOSING:
+        shutterOpen->setText("OPEN");
         shutterClosed->setText("CLOSING");
         appendLogText("Shutter is closing...");
         break;
