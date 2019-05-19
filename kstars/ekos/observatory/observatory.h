@@ -59,5 +59,7 @@ private slots:
     void initDome();
     void shutdownDome();
     void setDomeStatus(ISD::Dome::Status status);
+
+    void setShutterStatus(ISD::Dome::ShutterStatus status);
 };
 }

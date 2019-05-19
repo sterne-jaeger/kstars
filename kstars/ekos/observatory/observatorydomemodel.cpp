@@ -18,6 +18,7 @@ void ObservatoryDomeModel::initModel(Dome *dome)
 
     connect(mDome, &Dome::ready, this, &ObservatoryDomeModel::ready);
     connect(mDome, &Dome::newStatus, this, &ObservatoryDomeModel::newStatus);
+    connect(mDome, &Dome::newShutterStatus, this, &ObservatoryDomeModel::newShutterStatus);
 
 }
 
@@ -28,6 +29,14 @@ ISD::Dome::Status ObservatoryDomeModel::status()
         return ISD::Dome::DOME_IDLE;
 
     return mDome->status();
+}
+
+ISD::Dome::ShutterStatus ObservatoryDomeModel::shutterStatus()
+{
+    if (mDome == nullptr)
+        return ISD::Dome::SHUTTER_UNKNOWN;
+
+    return mDome->shutterStatus();
 }
 
 void ObservatoryDomeModel::park()
@@ -49,5 +58,22 @@ void ObservatoryDomeModel::unpark()
     mDome->unpark();
 }
 
+void ObservatoryDomeModel::openShutter()
+{
+    if (mDome == nullptr)
+        return;
+
+    emit newLog("Opening shutter...");
+    mDome->controlShutter(true);
+}
+
+void ObservatoryDomeModel::closeShutter()
+{
+    if (mDome == nullptr)
+        return;
+
+    emit newLog("Closing shutter...");
+    mDome->controlShutter(false);
+}
 
 }

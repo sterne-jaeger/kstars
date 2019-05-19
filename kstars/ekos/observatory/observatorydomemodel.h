@@ -28,17 +28,22 @@ public:
     void initModel(Dome *dome);
 
     ISD::Dome::Status status();
+    ISD::Dome::ShutterStatus shutterStatus();
 
     // proxies to the underlying dome object
     bool canPark() { return (mDome != nullptr && mDome->canPark()); }
     void park();
     void unpark();
+    bool hasShutter() { return (mDome != nullptr && mDome->hasShutter()); }
+    void openShutter();
+    void closeShutter();
 
 private:
     Dome *mDome;
 
 signals:
     void newStatus(ISD::Dome::Status state);
+    void newShutterStatus(ISD::Dome::ShutterStatus status);
     void ready();
     void newLog(const QString &text);
 };
