@@ -37,6 +37,9 @@
           <height>48</height>
          </size>
         </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Park the dome. For advanced control of the dome please use the INDI tab.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="styleSheet">
          <string notr="true">QPushButton:checked
 {
@@ -75,6 +78,9 @@ font-weight:bold;
           <width>72</width>
           <height>48</height>
          </size>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Unpark the dome. For advanced control of the dome please use the INDI tab.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="styleSheet">
          <string notr="true">QPushButton:checked
@@ -177,6 +183,9 @@ font-weight:bold;
           <height>48</height>
          </size>
         </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Close the shutter of the dome. For advanced control of the dome please use the INDI tab.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="styleSheet">
          <string notr="true">QPushButton:checked
 {
@@ -215,6 +224,9 @@ font-weight:bold;
           <width>72</width>
           <height>48</height>
          </size>
+        </property>
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Open the shutter of the dome. For advanced control of the dome please use the INDI tab.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="styleSheet">
          <string notr="true">QPushButton:checked
@@ -313,6 +325,9 @@ font-weight:bold;
        <widget class="QLabel" name="weatherLabel">
         <property name="enabled">
          <bool>false</bool>
+        </property>
+        <property name="toolTip">
+         <string>Display the weather status. The warning and alert limits are set in the INDI tab.</string>
         </property>
         <property name="text">
          <string>Weather Status: </string>
