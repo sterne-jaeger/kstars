@@ -27,10 +27,12 @@ void Observatory::setDomeModel(ObservatoryDomeModel *model)
     {
         connect(model, &Ekos::ObservatoryDomeModel::ready, this, &Ekos::Observatory::initDome);
         connect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
+        connect(model, &Ekos::ObservatoryDomeModel::newShutterStatus, this, &Ekos::Observatory::setShutterStatus);
     }
     else
     {
         shutdownDome();
+        disconnect(model, &Ekos::ObservatoryDomeModel::newShutterStatus, this, &Ekos::Observatory::setShutterStatus);
         disconnect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
         disconnect(model, &Ekos::ObservatoryDomeModel::ready, this, &Ekos::Observatory::initDome);
     }
@@ -68,20 +70,26 @@ void Observatory::initDome()
             domeUnpark->setEnabled(false);
         }
 
+        if (mDomeModel->hasShutter())
+        {
+            shutterBox->setVisible(true);
+        }
+        else
+        {
+            shutterBox->setVisible(false);
+        }
+
+        setShutterStatus(mDomeModel->shutterStatus());
+
+        // shutter control not implemented yet
+        shutterClosed->setEnabled(false);
+        shutterOpen->setEnabled(false);
     }
 
     // make invisible, since not implemented yet
     angleLabel->setVisible(false);
     domeAngleSpinBox->setVisible(false);
     setDomeAngleButton->setVisible(false);
-    shutterBox->setVisible(false);
-    /*
-    shutterClosed->setEnabled(true);
-    shutterOpen->setEnabled(true);
-    angleLabel->setEnabled(true);
-    domeAngleSpinBox->setEnabled(true);
-    setDomeAngleButton->setEnabled(true);
-    */
 }
 
 void Observatory::shutdownDome()
@@ -144,6 +152,37 @@ void Observatory::setDomeParked(bool parked)
     showDomeParked(parked);
 
 }
+
+void Observatory::setShutterStatus(ISD::Dome::ShutterStatus status)
+{
+    switch (status) {
+    case ISD::Dome::SHUTTER_OPEN:
+        shutterOpen->setChecked(true);
+        shutterClosed->setChecked(false);
+        shutterOpen->setText("OPEN");
+        appendLogText("Shutter is open.");
+        break;
+    case ISD::Dome::SHUTTER_OPENING:
+        shutterOpen->setText("OPENING");
+        appendLogText("Shutter is opening...");
+        break;
+    case ISD::Dome::SHUTTER_CLOSED:
+        shutterOpen->setChecked(false);
+        shutterClosed->setChecked(true);
+        shutterClosed->setText("CLOSED");
+        appendLogText("Shutter is closed.");
+        break;
+    case ISD::Dome::SHUTTER_CLOSING:
+        shutterClosed->setText("CLOSING");
+        appendLogText("Shutter is closing...");
+        break;
+    default:
+        break;
+    }
+}
+
+
+
 
 void Observatory::setWeatherModel(ObservatoryWeatherModel *model)
 {
