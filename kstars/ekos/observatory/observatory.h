@@ -56,6 +56,8 @@ private slots:
     void initWeather();
     void shutdownWeather();
     void setWeatherStatus(ISD::Weather::Status status);
+    void weatherWarningSettingsChanged();
+    void weatherAlertSettingsChanged();
 
     void initDome();
     void shutdownDome();

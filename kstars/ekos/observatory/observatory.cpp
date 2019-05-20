@@ -29,6 +29,14 @@ void Observatory::setDomeModel(ObservatoryDomeModel *model)
         connect(model, &Ekos::ObservatoryDomeModel::disconnected, this, &Ekos::Observatory::shutdownDome);
         connect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
         connect(model, &Ekos::ObservatoryDomeModel::newShutterStatus, this, &Ekos::Observatory::setShutterStatus);
+
+        connect(weatherWarningShutterCB, &QCheckBox::clicked, this, &Observatory::weatherWarningSettingsChanged);
+        connect(weatherWarningDomeCB, &QCheckBox::clicked, this, &Observatory::weatherWarningSettingsChanged);
+        connect(weatherWarningDelaySB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [this](int i) { Q_UNUSED(i); weatherWarningSettingsChanged(); });
+
+        connect(weatherAlertShutterCB, &QCheckBox::clicked, this, &Observatory::weatherAlertSettingsChanged);
+        connect(weatherAlertDomeCB, &QCheckBox::clicked, this, &Observatory::weatherAlertSettingsChanged);
+        connect(weatherAlertDelaySB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [this](int i) { Q_UNUSED(i); weatherAlertSettingsChanged(); });
     }
     else
     {
@@ -37,6 +45,14 @@ void Observatory::setDomeModel(ObservatoryDomeModel *model)
         disconnect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
         disconnect(model, &Ekos::ObservatoryDomeModel::ready, this, &Ekos::Observatory::initDome);
         disconnect(model, &Ekos::ObservatoryDomeModel::disconnected, this, &Ekos::Observatory::shutdownDome);
+
+        disconnect(weatherWarningShutterCB, &QCheckBox::clicked, this, &Observatory::weatherWarningSettingsChanged);
+        disconnect(weatherWarningDomeCB, &QCheckBox::clicked, this, &Observatory::weatherWarningSettingsChanged);
+        connect(weatherWarningDelaySB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [this](int i) { Q_UNUSED(i); weatherWarningSettingsChanged(); });
+
+        disconnect(weatherAlertShutterCB, &QCheckBox::clicked, this, &Observatory::weatherAlertSettingsChanged);
+        disconnect(weatherAlertDomeCB, &QCheckBox::clicked, this, &Observatory::weatherAlertSettingsChanged);
+        connect(weatherAlertDelaySB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [this](int i) { Q_UNUSED(i); weatherWarningSettingsChanged(); });
     }
 }
 
@@ -85,6 +101,8 @@ void Observatory::initDome()
     setDomeAngleButton->setVisible(false);
     weatherActionsBox->setVisible(false);
     statusDefinitionBox->setVisible(false);
+    weatherWarningStatusLabel->setVisible(false);
+    weatherAlertStatusLabel->setVisible(false);
 }
 
 void Observatory::shutdownDome()
@@ -203,6 +221,8 @@ void Observatory::initWeather()
 {
     weatherBox->setEnabled(true);
     weatherLabel->setEnabled(true);
+    weatherActionsBox->setVisible(true);
+    weatherActionsBox->setEnabled(true);
     setWeatherStatus(mWeatherModel->status());
 }
 
@@ -237,6 +257,17 @@ void Observatory::setWeatherStatus(ISD::Weather::Status status)
 
     weatherStatusLabel->setPixmap(QIcon::fromTheme(label.c_str())
                                   .pixmap(QSize(48, 48)));
+}
+
+
+void Observatory::weatherWarningSettingsChanged()
+{
+    //Fixme: not implemented yet
+}
+
+void Observatory::weatherAlertSettingsChanged()
+{
+    //Fixme: not implemented yet
 }
 
 
