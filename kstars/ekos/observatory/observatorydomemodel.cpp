@@ -17,6 +17,7 @@ void ObservatoryDomeModel::initModel(Dome *dome)
     mDome = dome;
 
     connect(mDome, &Dome::ready, this, &ObservatoryDomeModel::ready);
+    connect(mDome, &Dome::disconnected, this, &ObservatoryDomeModel::disconnected);
     connect(mDome, &Dome::newStatus, this, &ObservatoryDomeModel::newStatus);
     connect(mDome, &Dome::newShutterStatus, this, &ObservatoryDomeModel::newShutterStatus);
 

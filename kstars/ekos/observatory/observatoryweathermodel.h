@@ -34,6 +34,7 @@ private:
 signals:
     void newStatus(ISD::Weather::Status state);
     void ready();
+    void disconnected();
 
 };
 

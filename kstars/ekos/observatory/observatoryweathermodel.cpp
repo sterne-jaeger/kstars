@@ -18,6 +18,7 @@ void ObservatoryWeatherModel::initModel(Weather *weather)
 
     connect(mWeather, &Weather::ready, this, &ObservatoryWeatherModel::ready);
     connect(mWeather, &Weather::newStatus, this, &ObservatoryWeatherModel::newStatus);
+    connect(mWeather, &Weather::disconnected, this, &ObservatoryWeatherModel::disconnected);
 
     if (mWeather->status() != ISD::Weather::WEATHER_IDLE)
         emit ready();
