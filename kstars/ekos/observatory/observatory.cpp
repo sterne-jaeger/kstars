@@ -83,6 +83,8 @@ void Observatory::initDome()
     angleLabel->setVisible(false);
     domeAngleSpinBox->setVisible(false);
     setDomeAngleButton->setVisible(false);
+    weatherActionsBox->setVisible(false);
+    statusDefinitionBox->setVisible(false);
 }
 
 void Observatory::shutdownDome()
