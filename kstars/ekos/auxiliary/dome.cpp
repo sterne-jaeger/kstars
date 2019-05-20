@@ -43,6 +43,7 @@ void Dome::setDome(ISD::GDInterface *newDome)
     connect(currentDome, &ISD::Dome::newShutterStatus, [&](ISD::Dome::ShutterStatus status) {m_ShutterStatus = status;});
     connect(currentDome, &ISD::Dome::azimuthPositionChanged, this, &Dome::azimuthPositionChanged);
     connect(currentDome, &ISD::Dome::ready, this, &Dome::ready);
+    connect(currentDome, &ISD::Dome::Disconnected, this, &Dome::disconnected);
 }
 
 void Dome::setTelescope(ISD::GDInterface *newTelescope)

@@ -118,6 +118,8 @@ signals:
     void newShutterStatus(ISD::Dome::ShutterStatus status);
     void azimuthPositionChanged(double position);
     void ready();
+    // Signal when the underlying ISD::Dome signals a Disconnected()
+    void disconnected();
 
   private:
     // Devices needed for Dome operation

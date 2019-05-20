@@ -45,6 +45,7 @@ signals:
     void newStatus(ISD::Dome::Status state);
     void newShutterStatus(ISD::Dome::ShutterStatus status);
     void ready();
+    void disconnected();
     void newLog(const QString &text);
 };
 

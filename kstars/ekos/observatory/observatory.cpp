@@ -26,6 +26,7 @@ void Observatory::setDomeModel(ObservatoryDomeModel *model)
     if (model != nullptr)
     {
         connect(model, &Ekos::ObservatoryDomeModel::ready, this, &Ekos::Observatory::initDome);
+        connect(model, &Ekos::ObservatoryDomeModel::disconnected, this, &Ekos::Observatory::shutdownDome);
         connect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
         connect(model, &Ekos::ObservatoryDomeModel::newShutterStatus, this, &Ekos::Observatory::setShutterStatus);
     }
@@ -35,6 +36,7 @@ void Observatory::setDomeModel(ObservatoryDomeModel *model)
         disconnect(model, &Ekos::ObservatoryDomeModel::newShutterStatus, this, &Ekos::Observatory::setShutterStatus);
         disconnect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
         disconnect(model, &Ekos::ObservatoryDomeModel::ready, this, &Ekos::Observatory::initDome);
+        disconnect(model, &Ekos::ObservatoryDomeModel::disconnected, this, &Ekos::Observatory::shutdownDome);
     }
 }
 
@@ -62,6 +64,7 @@ void Observatory::initDome()
         if (mDomeModel->hasShutter())
         {
             shutterBox->setVisible(true);
+            shutterBox->setEnabled(true);
             connect(shutterOpen, &QPushButton::clicked, mDomeModel, &Ekos::ObservatoryDomeModel::openShutter);
             connect(shutterClosed, &QPushButton::clicked, mDomeModel, &Ekos::ObservatoryDomeModel::closeShutter);
             shutterClosed->setEnabled(true);
@@ -86,6 +89,7 @@ void Observatory::shutdownDome()
 {
     domeBox->setEnabled(false);
     shutterBox->setEnabled(false);
+    shutterBox->setVisible(false);
     domePark->setEnabled(false);
     domeUnpark->setEnabled(false);
     shutterClosed->setEnabled(false);
@@ -180,13 +184,16 @@ void Observatory::setWeatherModel(ObservatoryWeatherModel *model)
 
     if (model != nullptr)
     {
+        connect(model, &Ekos::ObservatoryWeatherModel::ready, this, &Ekos::Observatory::initWeather);
         connect(model, &Ekos::ObservatoryWeatherModel::newStatus, this, &Ekos::Observatory::setWeatherStatus);
-        initWeather();
+        connect(model, &Ekos::ObservatoryWeatherModel::disconnected, this, &Ekos::Observatory::shutdownWeather);
     }
     else
     {
         shutdownWeather();
         disconnect(model, &Ekos::ObservatoryWeatherModel::newStatus, this, &Ekos::Observatory::setWeatherStatus);
+        disconnect(model, &Ekos::ObservatoryWeatherModel::disconnected, this, &Ekos::Observatory::shutdownWeather);
+        disconnect(model, &Ekos::ObservatoryWeatherModel::ready, this, &Ekos::Observatory::initWeather);
     }
 }
 
