@@ -52,6 +52,9 @@ private:
     void appendLogText(const QString &);
     void clearLog();
 
+    void setWarningActions(WeatherActions actions);
+    void setAlertActions(WeatherActions actions);
+
 private slots:
     void initWeather();
     void shutdownWeather();
