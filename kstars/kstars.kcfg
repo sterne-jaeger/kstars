@@ -2301,4 +2301,30 @@
        <default>false</default>
     </entry>
    </group>
+   <group name="Observatory">
+   <entry name="weatherWarningCloseDome" type="Bool">
+      <label>Shall the dome being closed when a weather warning occurs?</label>
+      <default>false</default>
+   </entry>
+   <entry name="weatherWarningCloseShutter" type="Bool">
+      <label>Shall the shutter being closed when a weather warning occurs?</label>
+      <default>false</default>
+   </entry>
+   <entry name="weatherWarningDelay" type="UInt">
+      <label>Delay for reacting upon a weather warning.</label>
+      <default>15</default>
+   </entry>
+   <entry name="weatherAlertCloseDome" type="Bool">
+      <label>Shall the dome being closed when a weather alert occurs?</label>
+      <default>true</default>
+   </entry>
+   <entry name="weatherAlertCloseShutter" type="Bool">
+      <label>Shall the shutter being closed when a weather alert occurs?</label>
+      <default>true</default>
+   </entry>
+   <entry name="weatherAlertDelay" type="UInt">
+      <label>Delay for reacting upon a weather alert.</label>
+      <default>2</default>
+   </entry>
+   </group>
 </kcfg>

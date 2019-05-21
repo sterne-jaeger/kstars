@@ -99,10 +99,7 @@ void Observatory::initDome()
     angleLabel->setVisible(false);
     domeAngleSpinBox->setVisible(false);
     setDomeAngleButton->setVisible(false);
-    weatherActionsBox->setVisible(false);
     statusDefinitionBox->setVisible(false);
-    weatherWarningStatusLabel->setVisible(false);
-    weatherAlertStatusLabel->setVisible(false);
 }
 
 void Observatory::shutdownDome()
@@ -224,6 +221,8 @@ void Observatory::initWeather()
     weatherActionsBox->setVisible(true);
     weatherActionsBox->setEnabled(true);
     setWeatherStatus(mWeatherModel->status());
+    setWarningActions(mWeatherModel->getWarningActions());
+    setAlertActions(mWeatherModel->getAlertActions());
 }
 
 void Observatory::shutdownWeather()
@@ -262,12 +261,38 @@ void Observatory::setWeatherStatus(ISD::Weather::Status status)
 
 void Observatory::weatherWarningSettingsChanged()
 {
-    //Fixme: not implemented yet
+    struct WeatherActions actions;
+    actions.closeDome = weatherWarningDomeCB->isChecked();
+    actions.closeShutter = weatherWarningShutterCB->isChecked();
+    actions.delay = weatherWarningDelaySB->value();
+
+    getWeatherModel()->setWarningActions(actions);
 }
 
 void Observatory::weatherAlertSettingsChanged()
 {
-    //Fixme: not implemented yet
+    struct WeatherActions actions;
+    actions.closeDome = weatherAlertDomeCB->isChecked();
+    actions.closeShutter = weatherAlertShutterCB->isChecked();
+    actions.delay = weatherAlertDelaySB->value();
+
+    getWeatherModel()->setAlertActions(actions);
+}
+
+
+void Observatory::setWarningActions(WeatherActions actions)
+{
+    weatherWarningDomeCB->setChecked(actions.closeDome);
+    weatherWarningShutterCB->setChecked(actions.closeShutter);
+    weatherWarningDelaySB->setValue(actions.delay);
+}
+
+
+void Observatory::setAlertActions(WeatherActions actions)
+{
+    weatherAlertDomeCB->setChecked(actions.closeDome);
+    weatherAlertShutterCB->setChecked(actions.closeShutter);
+    weatherAlertDelaySB->setValue(actions.delay);
 }
 
 
