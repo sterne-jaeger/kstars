@@ -77,4 +77,12 @@ void ObservatoryDomeModel::closeShutter()
     mDome->controlShutter(false);
 }
 
+void ObservatoryDomeModel::execute(WeatherActions actions)
+{
+    if (actions.closeShutter)
+        closeShutter();
+    if (actions.parkDome)
+        park();
+}
+
 }
