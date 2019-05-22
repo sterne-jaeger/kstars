@@ -52,6 +52,10 @@ private:
     void appendLogText(const QString &);
     void clearLog();
 
+    // timer for refreshing the observatory status
+    QTimer weatherStatusTimer;
+
+    // reacting on weather changes
     void setWarningActions(WeatherActions actions);
     void setAlertActions(WeatherActions actions);
 
@@ -59,6 +63,8 @@ private slots:
     void initWeather();
     void shutdownWeather();
     void setWeatherStatus(ISD::Weather::Status status);
+
+    // reacting on weather changes
     void weatherWarningSettingsChanged();
     void weatherAlertSettingsChanged();
 

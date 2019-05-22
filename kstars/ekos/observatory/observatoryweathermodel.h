@@ -18,7 +18,7 @@ namespace Ekos
 {
 
 struct WeatherActions {
-    bool closeDome, closeShutter;
+    bool parkDome, closeShutter;
     int delay;
 };
 
@@ -33,19 +33,36 @@ public:
     void initModel(Weather *weather);
     ISD::Weather::Status status();
 
+    /**
+     * @brief Actions to be taken when a weather warning occurs
+     */
     WeatherActions getWarningActions() { return warningActions; }
+    QString getWarningActionsStatus();
     void setWarningActions(WeatherActions actions);
+
+    /**
+     * @brief Actions to be taken when a weather alert occurs
+     */
     WeatherActions getAlertActions() { return alertActions; }
+    QString getAlertActionsStatus();
     void setAlertActions(WeatherActions actions);
 
 private:
     Weather *mWeather;
+    QTimer warningTimer, alertTimer;
     struct WeatherActions warningActions, alertActions;
 
+private slots:
+    void weatherChanged(ISD::Weather::Status status);
+
 signals:
-    void newStatus(ISD::Weather::Status state);
+    void newStatus(ISD::Weather::Status status);
     void ready();
     void disconnected();
+    /**
+     * @brief signal that actions need to be taken due to weather conditions
+     */
+    void execute(WeatherActions actions);
 
 };
 

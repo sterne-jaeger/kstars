@@ -10,6 +10,7 @@
 #pragma once
 
 #include "../auxiliary/dome.h"
+#include "observatoryweathermodel.h"
 
 #include <QObject>
 
@@ -37,6 +38,10 @@ public:
     bool hasShutter() { return (mDome != nullptr && mDome->hasShutter()); }
     void openShutter();
     void closeShutter();
+
+public slots:
+    void execute(WeatherActions actions);
+
 
 private:
     Dome *mDome;
