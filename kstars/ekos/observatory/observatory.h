@@ -41,10 +41,10 @@ signals:
     Q_SCRIPTABLE void newLog(const QString &text);
 
 private:
-    ObservatoryDomeModel *mDomeModel;
+    ObservatoryDomeModel *mDomeModel = nullptr;
     void setDomeModel(ObservatoryDomeModel *model);
 
-    ObservatoryWeatherModel *mWeatherModel;
+    ObservatoryWeatherModel *mWeatherModel = nullptr;
     void setWeatherModel(ObservatoryWeatherModel *model);
 
     // Logging
