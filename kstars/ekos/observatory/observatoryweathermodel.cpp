@@ -17,7 +17,10 @@ void ObservatoryWeatherModel::initModel(Weather *weather)
 {
     mWeather = weather;
 
-    connect(mWeather, &Weather::ready, this, &ObservatoryWeatherModel::ready);
+    // ensure that we start the timers if required
+    weatherChanged(status());
+
+    connect(mWeather, &Weather::ready, this, &ObservatoryWeatherModel::updateWeatherStatus);
     connect(mWeather, &Weather::newStatus, this, &ObservatoryWeatherModel::weatherChanged);
     connect(mWeather, &Weather::disconnected, this, &ObservatoryWeatherModel::disconnected);
 
@@ -70,6 +73,14 @@ QString ObservatoryWeatherModel::getWarningActionsStatus()
     return "Status: inactive";
 }
 
+void ObservatoryWeatherModel::setAlertActions(WeatherActions actions) {
+    alertActions = actions;
+    Options::setWeatherAlertCloseDome(actions.parkDome);
+    Options::setWeatherAlertCloseShutter(actions.closeShutter);
+    Options::setWeatherAlertDelay(actions.delay);
+    alertTimer.setInterval(actions.delay * 60 * 1000);
+}
+
 QString ObservatoryWeatherModel::getAlertActionsStatus()
 {
     if (alertTimer.isActive())
@@ -82,12 +93,10 @@ QString ObservatoryWeatherModel::getAlertActionsStatus()
     return "Status: inactive";
 }
 
-void ObservatoryWeatherModel::setAlertActions(WeatherActions actions) {
-    alertActions = actions;
-    Options::setWeatherAlertCloseDome(actions.parkDome);
-    Options::setWeatherAlertCloseShutter(actions.closeShutter);
-    Options::setWeatherAlertDelay(actions.delay);
-    alertTimer.setInterval(actions.delay * 60 * 1000);
+void ObservatoryWeatherModel::updateWeatherStatus()
+{
+    weatherChanged(status());
+    emit ready();
 }
 
 
@@ -111,6 +120,5 @@ void ObservatoryWeatherModel::weatherChanged(ISD::Weather::Status status)
     }
     emit newStatus(status);
 }
-
 
 } // Ekos

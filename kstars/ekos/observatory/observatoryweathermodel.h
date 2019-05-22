@@ -54,6 +54,7 @@ private:
 
 private slots:
     void weatherChanged(ISD::Weather::Status status);
+    void updateWeatherStatus();
 
 signals:
     void newStatus(ISD::Weather::Status status);
