@@ -28,13 +28,15 @@ void ObservatoryWeatherModel::initModel(Weather *weather)
     warningActions.parkDome = Options::weatherWarningCloseDome();
     warningActions.closeShutter = Options::weatherWarningCloseShutter();
     warningActions.delay = Options::weatherWarningDelay();
+    warningActions.stopScheduler = Options::weatherAlertStopScheduler();
     alertActions.parkDome = Options::weatherAlertCloseDome();
     alertActions.closeShutter = Options::weatherAlertCloseShutter();
+    alertActions.stopScheduler = Options::weatherAlertStopScheduler();
     alertActions.delay = Options::weatherAlertDelay();
 
-    warningTimer.setInterval(warningActions.delay * 60 * 1000);
+    warningTimer.setInterval(warningActions.delay * 1000);
     warningTimer.setSingleShot(true);
-    alertTimer.setInterval(alertActions.delay * 60 * 1000);
+    alertTimer.setInterval(alertActions.delay * 1000);
     alertTimer.setSingleShot(true);
 
     connect(&warningTimer, &QTimer::timeout, [this]() { execute(warningActions); });
@@ -57,7 +59,7 @@ void ObservatoryWeatherModel::setWarningActions(WeatherActions actions) {
     Options::setWeatherWarningCloseDome(actions.parkDome);
     Options::setWeatherWarningCloseShutter(actions.closeShutter);
     Options::setWeatherWarningDelay(actions.delay);
-    warningTimer.setInterval(actions.delay * 60 * 1000);
+    warningTimer.setInterval(actions.delay * 1000);
 }
 
 
@@ -67,7 +69,7 @@ QString ObservatoryWeatherModel::getWarningActionsStatus()
     {
         QString status;
         int remaining = warningTimer.remainingTime()/1000;
-        return status.sprintf("%02d:%02d remaining", remaining/60, remaining%60);
+        return status.sprintf("%02ds remaining", remaining);
     }
 
     return "Status: inactive";
@@ -78,7 +80,7 @@ void ObservatoryWeatherModel::setAlertActions(WeatherActions actions) {
     Options::setWeatherAlertCloseDome(actions.parkDome);
     Options::setWeatherAlertCloseShutter(actions.closeShutter);
     Options::setWeatherAlertDelay(actions.delay);
-    alertTimer.setInterval(actions.delay * 60 * 1000);
+    alertTimer.setInterval(actions.delay * 1000);
 }
 
 QString ObservatoryWeatherModel::getAlertActionsStatus()
@@ -87,7 +89,7 @@ QString ObservatoryWeatherModel::getAlertActionsStatus()
     {
         QString status;
         int remaining = alertTimer.remainingTime()/1000;
-        return status.sprintf("%02d:%02d remaining", remaining/60, remaining%60);
+        return status.sprintf("%02ds remaining", remaining);
     }
 
     return "Status: inactive";

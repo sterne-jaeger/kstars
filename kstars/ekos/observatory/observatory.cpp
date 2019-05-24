@@ -23,6 +23,8 @@ Observatory::Observatory()
     domeAngleSpinBox->setVisible(false);
     setDomeAngleButton->setVisible(false);
     statusDefinitionBox->setVisible(false);
+    weatherWarningSchedulerCB->setVisible(false);
+    weatherAlertSchedulerCB->setVisible(false);
 }
 
 void Observatory::setDomeModel(ObservatoryDomeModel *model)
@@ -98,6 +100,8 @@ void Observatory::initDome()
         else
         {
             shutterBox->setVisible(false);
+            weatherWarningShutterCB->setVisible(false);
+            weatherAlertShutterCB->setVisible(false);
         }
 
         setDomeStatus(mDomeModel->status());

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>855</width>
+    <width>872</width>
     <height>421</height>
    </rect>
   </property>
@@ -484,87 +484,135 @@ font-weight:bold;
         </property>
         <layout class="QVBoxLayout" name="verticalLayout">
          <item alignment="Qt::AlignTop">
-          <widget class="QGroupBox" name="groupBox">
+          <widget class="QGroupBox" name="weatherWarningBox">
            <property name="title">
             <string>Warning</string>
            </property>
            <layout class="QGridLayout" name="gridLayout_6">
-            <item row="0" column="2">
-             <widget class="QLabel" name="weatherWarningDelayLabel">
-              <property name="text">
-               <string>delay (min):</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
+            <item row="0" column="0">
              <widget class="QCheckBox" name="weatherWarningDomeCB">
               <property name="text">
                <string>park dome</string>
               </property>
              </widget>
             </item>
-            <item row="0" column="0">
+            <item row="0" column="1">
              <widget class="QCheckBox" name="weatherWarningShutterCB">
               <property name="text">
                <string>close shutter</string>
               </property>
              </widget>
             </item>
-            <item row="0" column="3">
-             <widget class="QSpinBox" name="weatherWarningDelaySB"/>
-            </item>
-            <item row="1" column="0" colspan="4">
-             <widget class="QLabel" name="weatherWarningStatusLabel">
+            <item row="0" column="2">
+             <widget class="QCheckBox" name="weatherWarningSchedulerCB">
               <property name="text">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;Status: inactive&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-              </property>
-              <property name="textFormat">
-               <enum>Qt::AutoText</enum>
+               <string>stop scheduler</string>
               </property>
              </widget>
+            </item>
+            <item row="1" column="0" colspan="3">
+             <layout class="QHBoxLayout" name="horizontalLayout">
+              <item>
+               <widget class="QLabel" name="weatherWarningStatusLabel">
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;Status: inactive&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="textFormat">
+                 <enum>Qt::AutoText</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_6">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="weatherWarningDelayLabel">
+                <property name="text">
+                 <string>delay (sec):</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="weatherWarningDelaySB"/>
+              </item>
+             </layout>
             </item>
            </layout>
           </widget>
          </item>
          <item alignment="Qt::AlignTop">
-          <widget class="QGroupBox" name="groupBox_2">
+          <widget class="QGroupBox" name="weatherAlertBox">
            <property name="title">
             <string>Alert</string>
            </property>
            <layout class="QGridLayout" name="gridLayout_7">
-            <item row="0" column="2">
-             <widget class="QLabel" name="weatherAlertDelayLabel">
-              <property name="text">
-               <string>delay (min):</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="0">
+            <item row="0" column="1">
              <widget class="QCheckBox" name="weatherAlertShutterCB">
               <property name="text">
                <string>close shutter</string>
               </property>
              </widget>
             </item>
-            <item row="0" column="1">
+            <item row="0" column="0">
              <widget class="QCheckBox" name="weatherAlertDomeCB">
               <property name="text">
                <string>park dome</string>
               </property>
              </widget>
             </item>
-            <item row="0" column="3">
-             <widget class="QSpinBox" name="weatherAlertDelaySB"/>
-            </item>
-            <item row="1" column="0" colspan="4">
-             <widget class="QLabel" name="weatherAlertStatusLabel">
+            <item row="0" column="2">
+             <widget class="QCheckBox" name="weatherAlertSchedulerCB">
               <property name="text">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;Status: inactive&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-              </property>
-              <property name="textFormat">
-               <enum>Qt::AutoText</enum>
+               <string>stop scheduler</string>
               </property>
              </widget>
+            </item>
+            <item row="1" column="0" colspan="3">
+             <layout class="QHBoxLayout" name="horizontalLayout_2">
+              <item>
+               <widget class="QLabel" name="weatherAlertStatusLabel">
+                <property name="text">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;Status: inactive&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="textFormat">
+                 <enum>Qt::AutoText</enum>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_7">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QLabel" name="weatherAlertDelayLabel">
+                <property name="text">
+                 <string>delay (sec):</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QSpinBox" name="weatherAlertDelaySB"/>
+              </item>
+             </layout>
             </item>
            </layout>
           </widget>

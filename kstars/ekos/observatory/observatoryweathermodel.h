@@ -18,7 +18,7 @@ namespace Ekos
 {
 
 struct WeatherActions {
-    bool parkDome, closeShutter;
+    bool parkDome, closeShutter, stopScheduler;
     int delay;
 };
 
