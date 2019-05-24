@@ -2310,6 +2310,10 @@
       <label>Shall the shutter being closed when a weather warning occurs?</label>
       <default>false</default>
    </entry>
+   <entry name="weatherWarningStopScheduler" type="Bool">
+      <label>Shall the shutter being closed when a weather alert occurs?</label>
+      <default>true</default>
+   </entry>
    <entry name="weatherWarningDelay" type="UInt">
       <label>Delay for reacting upon a weather warning.</label>
       <default>15</default>
@@ -2319,6 +2323,10 @@
       <default>true</default>
    </entry>
    <entry name="weatherAlertCloseShutter" type="Bool">
+      <label>Shall the shutter being closed when a weather alert occurs?</label>
+      <default>true</default>
+   </entry>
+   <entry name="weatherAlertStopScheduler" type="Bool">
       <label>Shall the shutter being closed when a weather alert occurs?</label>
       <default>true</default>
    </entry>
