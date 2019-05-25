@@ -10,6 +10,7 @@
 #pragma once
 
 #include "ui_observatory.h"
+#include "observatorymodel.h"
 #include "observatorydomemodel.h"
 #include "observatoryweathermodel.h"
 #include "indiweather.h"
@@ -30,8 +31,8 @@ class Observatory : public QWidget, public Ui::Observatory
 
 public:
     Observatory();
-    ObservatoryDomeModel *getDomeModel() { return mDomeModel; }
-    ObservatoryWeatherModel *getWeatherModel() { return mWeatherModel; }
+    ObservatoryDomeModel *getDomeModel() { return mObservatoryModel->getDomeModel(); }
+    ObservatoryWeatherModel *getWeatherModel() { return mObservatoryModel->getWeatherModel(); }
 
     // Logging
     QStringList logText() { return m_LogText; }
@@ -41,10 +42,9 @@ signals:
     Q_SCRIPTABLE void newLog(const QString &text);
 
 private:
-    ObservatoryDomeModel *mDomeModel = nullptr;
-    void setDomeModel(ObservatoryDomeModel *model);
+    ObservatoryModel *mObservatoryModel = nullptr;
 
-    ObservatoryWeatherModel *mWeatherModel = nullptr;
+    void setDomeModel(ObservatoryDomeModel *model);
     void setWeatherModel(ObservatoryWeatherModel *model);
 
     // Logging
@@ -60,13 +60,21 @@ private:
     void setAlertActions(WeatherActions actions);
 
 private slots:
+    // observatory status handling
+    void setObseratoryStatusControl(ObservatoryStatusControl control);
+    void statusControlSettingsChanged();
+
     void initWeather();
     void shutdownWeather();
     void setWeatherStatus(ISD::Weather::Status status);
 
+
     // reacting on weather changes
     void weatherWarningSettingsChanged();
     void weatherAlertSettingsChanged();
+
+    // reacting on observatory status changes
+    void observatoryStatusChanged(bool ready);
 
     void initDome();
     void shutdownDome();

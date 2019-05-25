@@ -2321,7 +2321,7 @@
    </entry>
    <entry name="weatherWarningDelay" type="UInt">
       <label>Delay for reacting upon a weather warning.</label>
-      <default>15</default>
+      <default>600</default>
    </entry>
    <entry name="weatherAlertCloseDome" type="Bool">
       <label>Shall the dome being closed when a weather alert occurs?</label>
@@ -2337,7 +2337,19 @@
    </entry>
    <entry name="weatherAlertDelay" type="UInt">
       <label>Delay for reacting upon a weather alert.</label>
-      <default>2</default>
+      <default>30</default>
+   </entry>
+   <entry name="observatoryStatusUseDome" type="Bool">
+      <label>Dome status relevant for the Observatory status.</label>
+      <default>true</default>
+   </entry>
+   <entry name="observatoryStatusUseShutter" type="Bool">
+      <label>Shutter status relevant for the Observatory status.</label>
+      <default>true</default>
+   </entry>
+   <entry name="observatoryStatusUseWeather" type="Bool">
+      <label>Weather status relevant for the Observatory status.</label>
+      <default>true</default>
    </entry>
    </group>
 </kcfg>
