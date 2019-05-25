@@ -206,6 +206,7 @@ if (INDI_FOUND)
 
             #Observatory
             ekos/observatory/observatory.cpp
+            ekos/observatory/observatorymodel.cpp
             ekos/observatory/observatorydomemodel.cpp
             ekos/observatory/observatoryweathermodel.cpp
 
