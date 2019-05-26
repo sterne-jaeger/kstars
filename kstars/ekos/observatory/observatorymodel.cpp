@@ -93,4 +93,19 @@ void ObservatoryModel::updateStatus()
     emit newStatus(isReady());
 }
 
+void ObservatoryModel::makeReady()
+{
+    // dome relevant for the status and dome is ready
+    if (mStatusControl.useDome && (getDomeModel() == nullptr || getDomeModel()->status() != ISD::Dome::DOME_IDLE))
+        getDomeModel()->unpark();
+
+    // shutter relevant for the status and shutter open
+    if (mStatusControl.useShutter && (getDomeModel() == nullptr ||
+                                      (getDomeModel()->hasShutter() && getDomeModel()->shutterStatus() != ISD::Dome::SHUTTER_OPEN)))
+        getDomeModel()->openShutter();
+
+    // weather relevant for the status and weather is OK
+    // Haha, weather we can't change
+}
+
 }

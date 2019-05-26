@@ -53,6 +53,12 @@ public slots:
     // call this slot in case that the weather or dome status has changed
     void updateStatus();
 
+    /**
+     * @brief Depending on the status control settings execute everything so
+     * that the status reaches the state "READY".
+     */
+    void makeReady();
+
 signals:
     /**
      * @brief Signal a new observatory status

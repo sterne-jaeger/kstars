@@ -41,6 +41,11 @@ public:
 signals:
     Q_SCRIPTABLE void newLog(const QString &text);
 
+    /**
+     * @brief Signal a new observatory status
+     */
+    Q_SCRIPTABLE void newStatus(bool isReady);
+
 private:
     ObservatoryModel *mObservatoryModel = nullptr;
 
