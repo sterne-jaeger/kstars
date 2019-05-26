@@ -2,5 +2,8 @@
 <node>
   <interface name="org.kde.kstars.Ekos.Observatory">
     <property name="logText" type="as" access="read"/>
+    <signal name="newStatus">
+        <arg name="isReady" type="b" direction="out"/>
+    </signal>
   </interface>
 </node>
