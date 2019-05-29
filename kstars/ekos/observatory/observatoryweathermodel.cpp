@@ -25,10 +25,12 @@ void ObservatoryWeatherModel::initModel(Weather *weather)
     connect(mWeather, &Weather::disconnected, this, &ObservatoryWeatherModel::disconnected);
 
     // read the default values
+    warningActionsActive = Options::warningActionsActive();
     warningActions.parkDome = Options::weatherWarningCloseDome();
     warningActions.closeShutter = Options::weatherWarningCloseShutter();
     warningActions.delay = Options::weatherWarningDelay();
     warningActions.stopScheduler = Options::weatherAlertStopScheduler();
+    alertActionsActive = Options::alertActionsActive();
     alertActions.parkDome = Options::weatherAlertCloseDome();
     alertActions.closeShutter = Options::weatherAlertCloseShutter();
     alertActions.stopScheduler = Options::weatherAlertStopScheduler();
@@ -52,6 +54,32 @@ ISD::Weather::Status ObservatoryWeatherModel::status()
         return ISD::Weather::WEATHER_IDLE;
 
     return mWeather->status();
+}
+
+void ObservatoryWeatherModel::setWarningActionsActive(bool active)
+{
+    warningActionsActive = active;
+    Options::setWarningActionsActive(active);
+
+    // stop warning actions if deactivated
+    if (!active && warningTimer.isActive())
+        warningTimer.stop();
+    // start warning timer if activated
+    else if (active && !warningTimer.isActive() && mWeather->status() == ISD::Weather::WEATHER_WARNING)
+        warningTimer.start();
+}
+
+void ObservatoryWeatherModel::setAlertActionsActive(bool active)
+{
+    alertActionsActive = active;
+    Options::setAlertActionsActive(active);
+
+    // stop alert actions if deactivated
+    if (!active && alertTimer.isActive())
+        alertTimer.stop();
+    // start alert timer if activated
+    else if (active && !alertTimer.isActive() && mWeather->status() == ISD::Weather::WEATHER_ALERT)
+        alertTimer.start();
 }
 
 void ObservatoryWeatherModel::setWarningActions(WeatherActions actions) {
@@ -110,12 +138,14 @@ void ObservatoryWeatherModel::weatherChanged(ISD::Weather::Status status)
         alertTimer.stop();
         break;
     case ISD::Weather::WEATHER_WARNING:
-        warningTimer.start();
+        if (warningActionsActive)
+            warningTimer.start();
         alertTimer.stop();
         break;
     case ISD::Weather::WEATHER_ALERT:
         warningTimer.stop();
-        alertTimer.start();
+        if (alertActionsActive)
+            alertTimer.start();
         break;
     default:
         break;

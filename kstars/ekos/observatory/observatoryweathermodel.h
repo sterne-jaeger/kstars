@@ -39,6 +39,7 @@ public:
     WeatherActions getWarningActions() { return warningActions; }
     QString getWarningActionsStatus();
     void setWarningActions(WeatherActions actions);
+    bool getWarningActionsActive() { return warningActionsActive; }
 
     /**
      * @brief Actions to be taken when a weather alert occurs
@@ -46,11 +47,23 @@ public:
     WeatherActions getAlertActions() { return alertActions; }
     QString getAlertActionsStatus();
     void setAlertActions(WeatherActions actions);
+    bool getAlertActionsActive() { return alertActionsActive; }
+
+public slots:
+    /**
+     * @brief Activate or deactivate the weather warning actions
+     */
+    void setWarningActionsActive(bool active);
+    /**
+     * @brief Activate or deactivate the weather alert actions
+     */
+    void setAlertActionsActive(bool active);
 
 private:
     Weather *mWeather;
     QTimer warningTimer, alertTimer;
     struct WeatherActions warningActions, alertActions;
+    bool warningActionsActive, alertActionsActive;
 
 private slots:
     void weatherChanged(ISD::Weather::Status status);

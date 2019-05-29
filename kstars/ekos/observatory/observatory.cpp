@@ -230,6 +230,9 @@ void Observatory::setWeatherModel(ObservatoryWeatherModel *model)
 
     if (model != nullptr)
     {
+        connect(weatherWarningBox, &QGroupBox::clicked, model, &ObservatoryWeatherModel::setWarningActionsActive);
+        connect(weatherAlertBox, &QGroupBox::clicked, model, &ObservatoryWeatherModel::setAlertActionsActive);
+
         connect(model, &Ekos::ObservatoryWeatherModel::ready, this, &Ekos::Observatory::initWeather);
         connect(model, &Ekos::ObservatoryWeatherModel::newStatus, this, &Ekos::Observatory::setWeatherStatus);
         connect(model, &Ekos::ObservatoryWeatherModel::disconnected, this, &Ekos::Observatory::shutdownWeather);
@@ -245,6 +248,9 @@ void Observatory::setWeatherModel(ObservatoryWeatherModel *model)
         disconnect(model, &Ekos::ObservatoryWeatherModel::newStatus, this, &Ekos::Observatory::setWeatherStatus);
         disconnect(model, &Ekos::ObservatoryWeatherModel::disconnected, this, &Ekos::Observatory::shutdownWeather);
         disconnect(model, &Ekos::ObservatoryWeatherModel::ready, this, &Ekos::Observatory::initWeather);
+
+        disconnect(weatherWarningBox, &QGroupBox::clicked, model, &ObservatoryWeatherModel::setWarningActionsActive);
+        disconnect(weatherAlertBox, &QGroupBox::clicked, model, &ObservatoryWeatherModel::setAlertActionsActive);
     }
 }
 
@@ -254,6 +260,8 @@ void Observatory::initWeather()
     weatherLabel->setEnabled(true);
     weatherActionsBox->setVisible(true);
     weatherActionsBox->setEnabled(true);
+    weatherWarningBox->setChecked(getWeatherModel()->getWarningActionsActive());
+    weatherAlertBox->setChecked(getWeatherModel()->getAlertActionsActive());
     setWeatherStatus(getWeatherModel()->status());
     setWarningActions(getWeatherModel()->getWarningActions());
     setAlertActions(getWeatherModel()->getAlertActions());
