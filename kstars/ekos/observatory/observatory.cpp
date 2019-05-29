@@ -25,13 +25,14 @@ Observatory::Observatory()
     connect(useShutterCB, &QCheckBox::clicked, this, &Ekos::Observatory::statusControlSettingsChanged);
     connect(useWeatherCB, &QCheckBox::clicked, this, &Ekos::Observatory::statusControlSettingsChanged);
     connect(mObservatoryModel, &Ekos::ObservatoryModel::newStatus, this, &Ekos::Observatory::observatoryStatusChanged);
-    connect(statusReadyButton, &QPushButton::clicked, mObservatoryModel, &Ekos::ObservatoryModel::makeReady);
+    // ready button deactivated
+    // connect(statusReadyButton, &QPushButton::clicked, mObservatoryModel, &Ekos::ObservatoryModel::makeReady);
+    statusReadyButton->setEnabled(false);
 
     setDomeModel(new ObservatoryDomeModel());
     setWeatherModel(new ObservatoryWeatherModel());
     statusDefinitionBox->setVisible(true);
     statusDefinitionBox->setEnabled(true);
-    statusReadyButton->setEnabled(true);
     // make invisible, since not implemented yet
     angleLabel->setVisible(false);
     domeAngleSpinBox->setVisible(false);
@@ -316,7 +317,7 @@ void Observatory::weatherAlertSettingsChanged()
 
 void Observatory::observatoryStatusChanged(bool ready)
 {
-    statusReadyButton->setEnabled(!ready);
+    // statusReadyButton->setEnabled(!ready);
     statusReadyButton->setChecked(ready);
     emit newStatus(ready);
 }
