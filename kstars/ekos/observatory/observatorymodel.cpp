@@ -31,7 +31,7 @@ void ObservatoryModel::setDomeModel(ObservatoryDomeModel *model) {
         connect(mDomeModel, &ObservatoryDomeModel::newStatus, [this](ISD::Dome::Status s) { Q_UNUSED(s); updateStatus(); });
         connect(mDomeModel, &ObservatoryDomeModel::newShutterStatus, [this](ISD::Dome::ShutterStatus s) { Q_UNUSED(s); updateStatus(); });
         if (mWeatherModel != nullptr)
-            connect(mWeatherModel, &ObservatoryWeatherModel::execute, mDomeModel, &ObservatoryDomeModel::execute);
+            connect(mWeatherModel, &ObservatoryWeatherModel::execute, this, &ObservatoryModel::execute);
     }
     else
     {
@@ -47,15 +47,11 @@ void ObservatoryModel::setWeatherModel(ObservatoryWeatherModel *model) {
     if (model != nullptr)
     {
         connect(mWeatherModel, &ObservatoryWeatherModel::newStatus, [this](ISD::Weather::Status s) { Q_UNUSED(s); updateStatus(); });
-        if (mDomeModel != nullptr)
-        {
-            connect(mWeatherModel, &ObservatoryWeatherModel::execute, mDomeModel, &ObservatoryDomeModel::execute);
-        }
+        connect(mWeatherModel, &ObservatoryWeatherModel::execute, this, &ObservatoryModel::execute);
     }
     else
     {
-        if (mDomeModel != nullptr)
-            disconnect(mWeatherModel, &ObservatoryWeatherModel::execute, mDomeModel, &ObservatoryDomeModel::execute);
+        disconnect(mWeatherModel, &ObservatoryWeatherModel::execute, this, &ObservatoryModel::execute);
     }
     updateStatus();
 }
@@ -105,6 +101,13 @@ ObservatoryStatus ObservatoryModel::getStatus()
     // default case
     return OBSERVATORY_IDLE;
 
+}
+
+void ObservatoryModel::execute(WeatherActions actions)
+{
+    // pas through the dome model
+    if (getDomeModel() != nullptr)
+        getDomeModel()->execute(actions);
 }
 
 void ObservatoryModel::updateStatus()

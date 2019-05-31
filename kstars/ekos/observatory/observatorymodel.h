@@ -59,6 +59,12 @@ public:
     ObservatoryStatus getStatus();
 
 public slots:
+    /**
+     * @brief Trigger all actions necessary
+     * @param actions
+     */
+    void execute(WeatherActions actions);
+
     // call this slot in case that the weather or dome status has changed
     void updateStatus();
 

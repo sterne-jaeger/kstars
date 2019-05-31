@@ -37,8 +37,6 @@ Observatory::Observatory()
     angleLabel->setVisible(false);
     domeAngleSpinBox->setVisible(false);
     setDomeAngleButton->setVisible(false);
-    weatherWarningSchedulerCB->setVisible(false);
-    weatherAlertSchedulerCB->setVisible(false);
 }
 
 void Observatory::setObseratoryStatusControl(ObservatoryStatusControl control)
@@ -344,7 +342,6 @@ void Observatory::observatoryStatusChanged(ObservatoryStatus status)
         statusReadyButton->setText("--");
         break;
     }
-    emit newStatus(status);
 }
 
 

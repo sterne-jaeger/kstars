@@ -383,7 +383,7 @@ font-weight:bold;
             <item row="0" column="2">
              <widget class="QCheckBox" name="weatherWarningSchedulerCB">
               <property name="text">
-               <string>stop scheduler</string>
+               <string>trigger scheduler</string>
               </property>
              </widget>
             </item>
@@ -466,7 +466,7 @@ font-weight:bold;
             <item row="0" column="2">
              <widget class="QCheckBox" name="weatherAlertSchedulerCB">
               <property name="text">
-               <string>stop scheduler</string>
+               <string>trigger scheduler</string>
               </property>
              </widget>
             </item>
