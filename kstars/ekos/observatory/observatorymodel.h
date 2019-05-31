@@ -22,6 +22,14 @@ struct ObservatoryStatusControl
     bool useDome, useShutter, useWeather;
 };
 
+typedef enum
+{
+    OBSERVATORY_IDLE,
+    OBSERVATORY_READY,
+    OBSERVATORY_WARNING,
+    OBSERVATORY_ALERT
+} ObservatoryStatus;
+
 class ObservatoryModel : public QObject
 {
 
@@ -48,6 +56,7 @@ public:
      * dome etc and upon whether these settings are relevant (see status control).
      */
     bool isReady();
+    ObservatoryStatus getStatus();
 
 public slots:
     // call this slot in case that the weather or dome status has changed
@@ -62,9 +71,8 @@ public slots:
 signals:
     /**
      * @brief Signal a new observatory status
-     * @param isReady
      */
-    void newStatus(bool isReady);
+    void newStatus(ObservatoryStatus status);
 
 
 private:

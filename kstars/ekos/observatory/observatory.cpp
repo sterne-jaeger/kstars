@@ -323,11 +323,28 @@ void Observatory::weatherAlertSettingsChanged()
     getWeatherModel()->setAlertActions(actions);
 }
 
-void Observatory::observatoryStatusChanged(bool ready)
+void Observatory::observatoryStatusChanged(ObservatoryStatus status)
 {
     // statusReadyButton->setEnabled(!ready);
-    statusReadyButton->setChecked(ready);
-    emit newStatus(ready);
+    switch (status) {
+    case OBSERVATORY_READY:
+        statusReadyButton->setChecked(true);
+        statusReadyButton->setText("READY");
+        break;
+    case OBSERVATORY_WARNING:
+        statusReadyButton->setChecked(true);
+        statusReadyButton->setText("WARNING");
+        break;
+    case OBSERVATORY_ALERT:
+        statusReadyButton->setChecked(true);
+        statusReadyButton->setText("ALERT");
+        break;
+    default:
+        statusReadyButton->setChecked(false);
+        statusReadyButton->setText("--");
+        break;
+    }
+    emit newStatus(status);
 }
 
 

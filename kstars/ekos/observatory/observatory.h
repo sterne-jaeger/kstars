@@ -11,8 +11,6 @@
 
 #include "ui_observatory.h"
 #include "observatorymodel.h"
-#include "observatorydomemodel.h"
-#include "observatoryweathermodel.h"
 #include "indiweather.h"
 
 #include <QWidget>
@@ -44,7 +42,7 @@ signals:
     /**
      * @brief Signal a new observatory status
      */
-    Q_SCRIPTABLE void newStatus(bool isReady);
+    Q_SCRIPTABLE void newStatus(ObservatoryStatus status);
 
 private:
     ObservatoryModel *mObservatoryModel = nullptr;
@@ -79,7 +77,7 @@ private slots:
     void weatherAlertSettingsChanged();
 
     // reacting on observatory status changes
-    void observatoryStatusChanged(bool ready);
+    void observatoryStatusChanged(ObservatoryStatus status);
 
     void initDome();
     void shutdownDome();
