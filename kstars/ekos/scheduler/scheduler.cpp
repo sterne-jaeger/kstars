@@ -1325,6 +1325,18 @@ void Scheduler::pause()
     startB->setToolTip(i18n("Resume Scheduler"));
 }
 
+void Scheduler::resume()
+{
+    if (state == SCHEDULER_PAUSED)
+        start();
+    else
+    {
+        appendLogText(i18n("Trying to resume from a non paused state - ignored."));
+        qCWarning(KSTARS_EKOS_SCHEDULER) << "Trying to resume from a non paused state - ignored.";
+    }
+
+}
+
 void Scheduler::setCurrentJob(SchedulerJob *job)
 {
     /* Reset job widgets */
@@ -6896,7 +6908,7 @@ void Scheduler::setWeatherStatus(ISD::Weather::Status status)
         emit weatherChanged(weatherStatus);
     }
 
-    if (weatherStatus == ISD::Weather::WEATHER_ALERT)
+    if (weatherStatus == ISD::Weather::WEATHER_ALERT && weatherCheck->isChecked())
     {
         appendLogText(i18n("Starting shutdown procedure due to severe weather."));
         if (currentJob)

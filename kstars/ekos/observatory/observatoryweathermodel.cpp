@@ -41,8 +41,8 @@ void ObservatoryWeatherModel::initModel(Weather *weather)
     alertTimer.setInterval(alertActions.delay * 1000);
     alertTimer.setSingleShot(true);
 
-    connect(&warningTimer, &QTimer::timeout, [this]() { execute(warningActions); });
-    connect(&alertTimer, &QTimer::timeout, [this]() { execute(alertActions); });
+    connect(&warningTimer, &QTimer::timeout, [this]() { execute(status()); });
+    connect(&alertTimer, &QTimer::timeout, [this]() { execute(status()); });
 
     if (mWeather->status() != ISD::Weather::WEATHER_IDLE)
         emit ready();

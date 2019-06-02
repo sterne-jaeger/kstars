@@ -13,6 +13,9 @@
 namespace Ekos
 {
 
+QPointer<QDBusInterface> schedulerInterface { nullptr };
+
+
 ObservatoryModel::ObservatoryModel()
 {
 
@@ -22,21 +25,27 @@ ObservatoryModel::ObservatoryModel()
 
     setDomeModel(new ObservatoryDomeModel());
     setWeatherModel(new ObservatoryWeatherModel());
+    // Set up DBus interfaces
+    QDBusConnection::sessionBus().registerObject("/KStars/Ekos/Observatory", this);
+    // create D-Bus interface to the Scheduler module
+    schedulerInterface = new QDBusInterface("org.kde.kstars", "/KStars/Ekos/Scheduler", "org.kde.kstars.Ekos.Scheduler",
+                                       QDBusConnection::sessionBus(), this);
+    // listen on D-Bus for newStatus messages from the Scheduler module
+    QDBusConnection::sessionBus().connect("org.kde.kstars", "/KStars/Ekos/Scheduler", "org.kde.kstars.Ekos.Scheduler",
+                                          "newStatus", this, SLOT(setSchedulerStatus(Ekos::SchedulerState)));
 }
 
 void ObservatoryModel::setDomeModel(ObservatoryDomeModel *model) {
     mDomeModel = model;
     if (model != nullptr)
     {
+        // listen to status changes for dome and shutter
         connect(mDomeModel, &ObservatoryDomeModel::newStatus, [this](ISD::Dome::Status s) { Q_UNUSED(s); updateStatus(); });
         connect(mDomeModel, &ObservatoryDomeModel::newShutterStatus, [this](ISD::Dome::ShutterStatus s) { Q_UNUSED(s); updateStatus(); });
+
+        // listen to weather status changes
         if (mWeatherModel != nullptr)
             connect(mWeatherModel, &ObservatoryWeatherModel::execute, this, &ObservatoryModel::execute);
-    }
-    else
-    {
-        if (mWeatherModel != nullptr)
-            disconnect(mWeatherModel, &ObservatoryWeatherModel::execute, mDomeModel, &ObservatoryDomeModel::execute);
     }
 
     updateStatus();
@@ -103,12 +112,60 @@ ObservatoryModel::Status ObservatoryModel::getStatus()
 
 }
 
-void ObservatoryModel::execute(WeatherActions actions)
+void ObservatoryModel::execute(ISD::Weather::Status status)
 {
-    // pas through the dome model
-    if (getDomeModel() != nullptr)
-        getDomeModel()->execute(actions);
+    switch (status) {
+    case ISD::Weather::WEATHER_WARNING:
+        // call back via setSchedulerStatus()
+        schedulerInterface->call(QDBus::AutoDetect, "pause");
+        mExecStatus = EXEC_RUNNING;
+        break;
+    case ISD::Weather::WEATHER_ALERT:
+        // call back via setSchedulerStatus()
+        schedulerInterface->call(QDBus::AutoDetect, "stop");
+        mExecStatus = EXEC_RUNNING;
+    default:
+        break;
+    }
 }
+
+void ObservatoryModel::setSchedulerStatus(SchedulerState state)
+{
+    // do nothing if no warning or alert action has been triggered
+    if (mExecStatus == EXEC_IDLE)
+        return;
+
+    // handle the edge cases
+    if (getWeatherModel() == nullptr || getDomeModel() == nullptr)
+        return;
+
+    // scheduler has reached the paused stage
+    // now its time to call the respective actions of the dome
+    switch (getStatus()) {
+    case STATUS_WARNING:
+        // for warnings the scheduler should be paused
+        if (state == SCHEDULER_PAUSED)
+        {
+            getDomeModel()->execute(getWeatherModel()->getWarningActions());
+            // executions completed
+            mExecStatus = EXEC_IDLE;
+        }
+        break;
+    case STATUS_ALERT:
+        // for alerts the scheduler should be shut down
+        if (state == SCHEDULER_IDLE || state == SCHEDULER_ABORTED)
+        {
+            getDomeModel()->execute(getWeatherModel()->getAlertActions());
+            // executions completed
+            mExecStatus = EXEC_IDLE;
+        }
+    default:
+        // in all other cases: do nothing
+        break;
+    }
+
+}
+
 
 void ObservatoryModel::updateStatus()
 {

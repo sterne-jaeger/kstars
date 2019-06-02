@@ -194,6 +194,17 @@ class Scheduler : public QWidget, public Ui::Scheduler
         Q_SCRIPTABLE Q_NOREPLY void stop();
 
         /** DBUS interface function.
+             * @brief Pause the scheduler.
+             */
+        Q_SCRIPTABLE Q_NOREPLY void pause();
+
+        /** DBUS interface function.
+             * @brief Resume the paused scheduler. If it is not paused, do nothing.
+             */
+        Q_SCRIPTABLE Q_NOREPLY void resume();
+
+
+        /** DBUS interface function.
              * @brief Loads the Ekos Scheduler List (.esl) file.
              * @param fileURL path to a file
              * @return true if loading file is successful, false otherwise.
@@ -371,7 +382,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
         bool shouldSchedulerSleep(SchedulerJob *currentJob);
 
         void toggleScheduler();
-        void pause();
         void save();
         void saveAs();
         void load();

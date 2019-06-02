@@ -12,6 +12,12 @@
     <method name="stop">
       <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
     </method>
+    <method name="pause">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="resume">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
     <method name="loadScheduler">
       <arg name="fileURL" type="s" direction="in"/>
       <arg type="b" direction="out"/>
@@ -20,5 +26,10 @@
     <method name="resetAllJobs">
       <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
     </method>
+    <signal name="newStatus">
+        <arg name="status" type="(i)" direction="out"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="Ekos::SchedulerState"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="Ekos::SchedulerState"/>
+    </signal>
   </interface>
 </node>

@@ -11,6 +11,7 @@
 
 #include "observatorydomemodel.h"
 #include "observatoryweathermodel.h"
+#include "../scheduler/scheduler.h"
 
 #include <QObject>
 
@@ -29,7 +30,11 @@ class ObservatoryModel : public QObject
 
 public:
 
+    // general status of the observatory
     typedef enum { STATUS_IDLE, STATUS_READY, STATUS_WARNING, STATUS_ALERT } Status;
+
+    // specific status for acting upon warnings and alerts
+    typedef enum { EXEC_IDLE, EXEC_RUNNING } ExecStatus;
 
     ObservatoryModel();
 
@@ -55,10 +60,9 @@ public:
 
 public slots:
     /**
-     * @brief Trigger all actions necessary
-     * @param actions
+     * @brief Trigger all actions necessary due to a given weather status
      */
-    void execute(WeatherActions actions);
+    void execute(ISD::Weather::Status status);
 
     // call this slot in case that the weather or dome status has changed
     void updateStatus();
@@ -68,6 +72,11 @@ public slots:
      * that the status reaches the state "READY".
      */
     void makeReady();
+
+    /**
+     * @brief React upon a changed scheduler state
+     */
+    void setSchedulerStatus(Ekos::SchedulerState state);
 
 signals:
     /**
@@ -81,6 +90,8 @@ private:
 
     ObservatoryDomeModel *mDomeModel = nullptr;
     ObservatoryWeatherModel *mWeatherModel = nullptr;
+
+    ExecStatus mExecStatus = EXEC_IDLE;
 
 };
 

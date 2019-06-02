@@ -39,8 +39,12 @@ public:
     void openShutter();
     void closeShutter();
 
-public slots:
+    /**
+     * @brief React according to the given weather status
+     */
     void execute(WeatherActions actions);
+
+public slots:
 
 
 private:

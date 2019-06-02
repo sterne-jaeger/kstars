@@ -76,7 +76,7 @@ signals:
     /**
      * @brief signal that actions need to be taken due to weather conditions
      */
-    void execute(WeatherActions actions);
+    void execute(ISD::Weather::Status status);
 
 };
 
