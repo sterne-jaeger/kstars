@@ -84,22 +84,22 @@ bool ObservatoryModel::isReady()
     return true;
 }
 
-ObservatoryStatus ObservatoryModel::getStatus()
+ObservatoryModel::Status ObservatoryModel::getStatus()
 {
     if (isReady())
-        return OBSERVATORY_READY;
+        return STATUS_READY;
 
     else if (mStatusControl.useWeather)
     {
         if (getWeatherModel() == nullptr)
-            return OBSERVATORY_IDLE;
+            return STATUS_IDLE;
         else if (getWeatherModel()->status() == ISD::Weather::WEATHER_WARNING)
-            return OBSERVATORY_WARNING;
+            return STATUS_WARNING;
         else if (getWeatherModel()->status() == ISD::Weather::WEATHER_ALERT)
-            return OBSERVATORY_ALERT;
+            return STATUS_ALERT;
     }
     // default case
-    return OBSERVATORY_IDLE;
+    return STATUS_IDLE;
 
 }
 

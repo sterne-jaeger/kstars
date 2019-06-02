@@ -42,7 +42,7 @@ signals:
     /**
      * @brief Signal a new observatory status
      */
-    Q_SCRIPTABLE void newStatus(ObservatoryStatus status);
+    Q_SCRIPTABLE void newStatus(ObservatoryModel::Status status);
 
 private:
     ObservatoryModel *mObservatoryModel = nullptr;
@@ -77,7 +77,7 @@ private slots:
     void weatherAlertSettingsChanged();
 
     // reacting on observatory status changes
-    void observatoryStatusChanged(ObservatoryStatus status);
+    void observatoryStatusChanged(ObservatoryModel::Status status);
 
     void initDome();
     void shutdownDome();
