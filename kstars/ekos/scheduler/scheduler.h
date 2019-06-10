@@ -743,6 +743,8 @@ class Scheduler : public QWidget, public Ui::Scheduler
         QTimer schedulerTimer;
         /// To call checkJobStage
         QTimer jobTimer;
+        /// Delay for restarting the guider
+        QTimer restartGuidingTimer;
 
         /// Generic time to track timeout of current operation in progress
         QTime currentOperationTime;
