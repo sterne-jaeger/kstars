@@ -4969,7 +4969,9 @@ IPState Capture::processPreCaptureCalibrationStage()
 
         return IPS_OK;
     }
-    else if (activeJob->getFrameType() == FRAME_DARK && m_TelescopeCoveredDarkExposure == false)
+    else if (activeJob->getFrameType() == FRAME_DARK &&
+             m_TelescopeCoveredDarkExposure == false &&
+             (dustCap == nullptr || activeJob->getFlatFieldSource() == SOURCE_MANUAL))
     {
         QStringList shutterfulCCDs  = Options::shutterfulCCDs();
         QStringList shutterlessCCDs = Options::shutterlessCCDs();
@@ -5087,6 +5089,8 @@ IPState Capture::processPreCaptureCalibrationStage()
                     dustCap->SetLightEnabled(false);
                 }
             }
+            else
+                appendLogText(i18n("Warning: Flat cap is selected in Calibration but none detected."));
             break;
 
         // Park cap, if not parked and not flat frame
@@ -5167,6 +5171,8 @@ IPState Capture::processPreCaptureCalibrationStage()
                     dustCap->SetLightEnabled(false);
                 }
             }
+            else
+                appendLogText(i18n("Warning: Dark cap is selected in Calibration but none detected."));
             break;
 
         // Go to wall coordinates
