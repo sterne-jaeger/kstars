@@ -651,6 +651,10 @@ class Scheduler : public QWidget, public Ui::Scheduler
                                bool &hasAutoFocus);
         int getCompletedFiles(const QString &path, const QString &seqPrefix);
 
+        // retrieve the guiding status
+        GuideState getGuidingStatus();
+
+
         Ekos::Scheduler *ui { nullptr };
         //DBus interfaces
         QPointer<QDBusInterface> focusInterface { nullptr };

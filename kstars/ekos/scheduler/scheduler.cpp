@@ -3235,8 +3235,7 @@ void Scheduler::checkJobStage()
             // Let's make sure guide module does not become unresponsive
             if (currentOperationTime.elapsed() > GUIDE_INACTIVITY_TIMEOUT)
             {
-                QVariant const status = guideInterface->property("status");
-                Ekos::GuideState guideStatus = static_cast<Ekos::GuideState>(status.toInt());
+                GuideState guideStatus = getGuidingStatus();
 
                 if (guideStatus == Ekos::GUIDE_IDLE || guideStatus == Ekos::GUIDE_CONNECTED || guideStatus == Ekos::GUIDE_DISCONNECTED)
                 {
@@ -3565,7 +3564,13 @@ void Scheduler::getNextAction()
                 else if (currentJob->getStepPipeline() & SchedulerJob::USE_ALIGN)
                     startAstrometry();
                 else if (currentJob->getStepPipeline() & SchedulerJob::USE_GUIDE)
-                    startGuiding();
+                    if (getGuidingStatus() == GUIDE_GUIDING)
+                    {
+                        appendLogText(i18n("Guiding already running, directly start capturing."));
+                        startCapture();
+                    }
+                    else
+                        startGuiding();
                 else
                     startCapture();
             }
@@ -4552,6 +4557,15 @@ void Scheduler::startAstrometry()
 
 void Scheduler::startGuiding(bool resetCalibration)
 {
+    // avoid starting the guider twice
+    if (resetCalibration == false && getGuidingStatus() == GUIDE_GUIDING)
+    {
+        appendLogText(i18n("Guiding already running for %1 ...", currentJob->getName()));
+        currentJob->setStage(SchedulerJob::STAGE_GUIDING);
+        currentOperationTime.restart();
+        return;
+    }
+
     // Connect Guider
     guideInterface->call(QDBus::AutoDetect, "connectGuider");
 
@@ -6653,6 +6667,14 @@ void Scheduler::setGuideStatus(Ekos::GuideState status)
     }
 }
 
+GuideState Scheduler::getGuidingStatus()
+{
+    QVariant guideStatus = guideInterface->property("status");
+    Ekos::GuideState gStatus = static_cast<Ekos::GuideState>(guideStatus.toInt());
+
+    return gStatus;
+}
+
 void Scheduler::setCaptureStatus(Ekos::CaptureState status)
 {
     if (state == SCHEDULER_PAUSED || currentJob == nullptr)
@@ -6680,8 +6702,7 @@ void Scheduler::setCaptureStatus(Ekos::CaptureState status)
                 if (currentJob->getStepPipeline() & SchedulerJob::USE_GUIDE)
                 {
                     // Check if it is guiding related.
-                    QVariant guideStatus = guideInterface->property("status");
-                    Ekos::GuideState gStatus = static_cast<Ekos::GuideState>(guideStatus.toInt());
+                    Ekos::GuideState gStatus = getGuidingStatus();
                     if (gStatus == Ekos::GUIDE_ABORTED ||
                             gStatus == Ekos::GUIDE_CALIBRATION_ERROR ||
                             gStatus == GUIDE_DITHERING_ERROR)
