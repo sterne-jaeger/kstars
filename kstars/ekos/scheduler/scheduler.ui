@@ -1036,34 +1036,15 @@ font-weight:bold;
           <property name="spacing">
            <number>1</number>
           </property>
-          <item row="0" column="0">
-           <widget class="QCheckBox" name="altConstraintCheck">
-            <property name="toolTip">
-             <string>The object's altitude must remain equal or higher than the given value.</string>
-            </property>
-            <property name="text">
-             <string>Alt &gt; </string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">constraintButtonGroup</string>
-            </attribute>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QDoubleSpinBox" name="minAltitude">
-            <property name="minimum">
-             <double>-15.000000000000000</double>
-            </property>
-            <property name="maximum">
-             <double>89.900000000000006</double>
-            </property>
-           </widget>
-          </item>
           <item row="0" column="2">
            <widget class="QLabel" name="label_10">
+            <property name="text">
+             <string>°</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLabel" name="label_11">
             <property name="text">
              <string>°</string>
             </property>
@@ -1092,11 +1073,30 @@ font-weight:bold;
             </property>
            </widget>
           </item>
-          <item row="1" column="2">
-           <widget class="QLabel" name="label_11">
-            <property name="text">
-             <string>°</string>
+          <item row="0" column="1">
+           <widget class="QDoubleSpinBox" name="minAltitude">
+            <property name="minimum">
+             <double>-15.000000000000000</double>
             </property>
+            <property name="maximum">
+             <double>89.900000000000006</double>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QCheckBox" name="altConstraintCheck">
+            <property name="toolTip">
+             <string>The object's altitude must remain equal or higher than the given value.</string>
+            </property>
+            <property name="text">
+             <string>Alt &gt; </string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">constraintButtonGroup</string>
+            </attribute>
            </widget>
           </item>
          </layout>
@@ -1324,11 +1324,83 @@ font-weight:bold;
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="observatoryOperationsLayout" stretch="1,1">
-     <property name="spacing">
-      <number>3</number>
+    <widget class="QGroupBox" name="errorHandlingGroup">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Define what should happen when a job steps into an error or aborts:&lt;/p&gt;
+&lt;ul &quot;&gt;
+&lt;li&gt;&lt;b&gt;don't restart&lt;/b&gt;: Don't restart the job in case of an error or an abort.&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;restart after all terminated&lt;/b&gt;: If a job runs into an error or gets aborted, the scheduler will try to restart it if there is no job left that might be started. This might be the case when all jobs have been terminated or the startup conditions of the remaining jobs a lying in the future. Before these jobs will be restarted, the scheduler waits for the given delay.&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;restart immediately&lt;/b&gt;: As soon as a job runs into an error or gets aborted, the scheduler will wait the given delay and then will try to restart the job. This will be repeated until another job get's higher priority.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/body&gt;&lt;/html&gt;</string>
      </property>
-     <item>
+     <property name="title">
+      <string>Error Handling</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <property name="horizontalSpacing">
+       <number>18</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>0</number>
+      </property>
+      <item row="0" column="4">
+       <widget class="QLabel" name="errorHandlingWaitLabel">
+        <property name="text">
+         <string>wait (secs)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0" colspan="2">
+       <widget class="QRadioButton" name="errorHandlingDontRestartButton">
+        <property name="text">
+         <string>don't restart</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QRadioButton" name="errorHandlingRestartImmediatelyButton">
+        <property name="text">
+         <string>restart immediately</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QRadioButton" name="errorHandlingRestartAfterAllButton">
+        <property name="text">
+         <string>restart after all terminated</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="6">
+       <spacer name="horizontalSpacer_9">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="0" column="5">
+       <widget class="QSpinBox" name="errorHandlingDelaySB">
+        <property name="maximum">
+         <number>10000</number>
+        </property>
+        <property name="singleStep">
+         <number>10</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="schedulerSettingsGroup">
+     <item row="0" column="1">
       <widget class="QGroupBox" name="startupGroupBox">
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;One-time startup procedure to be executed before starting Ekos. The script is executed &lt;span style=&quot; font-weight:600; text-decoration: underline;&quot;&gt;before&lt;/span&gt; the startup procedures (e.g. unpark scope), if selected, are executed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -1476,7 +1548,7 @@ font-weight:bold;
        </layout>
       </widget>
      </item>
-     <item>
+     <item row="0" column="2">
       <widget class="QGroupBox" name="shutdownGroupBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -1655,6 +1727,13 @@ font-weight:bold;
     </layout>
    </item>
    <item>
+    <layout class="QHBoxLayout" name="observatoryOperationsLayout">
+     <property name="spacing">
+      <number>3</number>
+     </property>
+    </layout>
+   </item>
+   <item>
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -1734,7 +1813,7 @@ font-weight:bold;
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="constraintButtonGroup">
+  <buttongroup name="shutdownProcedureGroup">
    <property name="exclusive">
     <bool>false</bool>
    </property>
@@ -1744,14 +1823,14 @@ font-weight:bold;
     <bool>false</bool>
    </property>
   </buttongroup>
-  <buttongroup name="shutdownProcedureGroup">
+  <buttongroup name="startupProcedureButtonGroup">
    <property name="exclusive">
     <bool>false</bool>
    </property>
   </buttongroup>
   <buttongroup name="completionButtonGroup"/>
   <buttongroup name="startupButtonGroup"/>
-  <buttongroup name="startupProcedureButtonGroup">
+  <buttongroup name="constraintButtonGroup">
    <property name="exclusive">
     <bool>false</bool>
    </property>

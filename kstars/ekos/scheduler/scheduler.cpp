@@ -196,6 +196,9 @@ Scheduler::Scheduler()
 
     connect(twilightCheck, &QCheckBox::toggled, this, &Scheduler::checkTwilightWarning);
 
+    // not implemented yet
+    errorHandlingGroup->setVisible(false);
+
     loadProfiles();
 
     watchJobChanges(true);
