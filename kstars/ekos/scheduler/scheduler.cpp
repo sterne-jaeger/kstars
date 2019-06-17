@@ -196,8 +196,10 @@ Scheduler::Scheduler()
 
     connect(twilightCheck, &QCheckBox::toggled, this, &Scheduler::checkTwilightWarning);
 
+    // default set error handling strategy to not restart
+    errorHandlingDontRestartButton->setChecked(true);
     // not implemented yet
-    errorHandlingGroup->setVisible(false);
+    errorHandlingRestartAfterAllButton->setVisible(false);
 
     loadProfiles();
 
@@ -3843,7 +3845,11 @@ bool Scheduler::loadScheduler(const QString &fileURL)
     char errmsg[MAXRBUF];
     XMLEle *root = nullptr;
     XMLEle *ep   = nullptr;
+    XMLEle *subEP = nullptr;
     char c;
+
+    // We expect all data read from the XML to be in the C locale - QLocale::c()
+    QLocale cLocale = QLocale::c();
 
     while (sFile.getChar(&c))
     {
@@ -3859,6 +3865,16 @@ bool Scheduler::loadScheduler(const QString &fileURL)
                 else if (!strcmp(tag, "Profile"))
                 {
                     schedulerProfileCombo->setCurrentText(pcdataXMLEle(ep));
+                }
+                else if (!strcmp(tag, "ErrorHandlingStrategy"))
+                {
+                    setErrorHandlingStrategy(static_cast<ErrorHandlingStrategy>(cLocale.toInt(findXMLAttValu(ep, "value"))));
+
+                    subEP = findXMLEle(ep, "delay");
+                    if (subEP)
+                    {
+                        errorHandlingDelaySB->setValue(cLocale.toInt(pcdataXMLEle(subEP)));
+                    }
                 }
                 else if (!strcmp(tag, "StartupProcedure"))
                 {
@@ -4210,6 +4226,10 @@ bool Scheduler::saveScheduler(const QUrl &fileURL)
         outstream << "</Job>" << endl;
     }
 
+    outstream << "<ErrorHandlingStrategy value='" << getErrorHandlingStrategy() << "'>" << endl;
+    outstream << "<delay>" << errorHandlingDelaySB->value() << "</delay>" << endl;
+    outstream << "</ErrorHandlingStrategy>" << endl;
+
     outstream << "<StartupProcedure>" << endl;
     if (startupScript->text().isEmpty() == false)
         outstream << "<Procedure value='" << startupScript->text() << "'>StartupScript</Procedure>" << endl;
@@ -4389,32 +4409,38 @@ void Scheduler::findNextJob()
     /* FIXME: Other debug logs in that function probably */
     qCDebug(KSTARS_EKOS_SCHEDULER) << "Find next job...";
 
-    if (currentJob->getState() == SchedulerJob::JOB_ERROR)
+    if (currentJob->getState() == SchedulerJob::JOB_ERROR || currentJob->getState() == SchedulerJob::JOB_ABORTED)
     {
         captureBatch = 0;
         // Stop Guiding if it was used
         stopGuiding();
 
-        appendLogText(i18n("Job '%1' is terminated due to errors.", currentJob->getName()));
+        if (currentJob->getState() == SchedulerJob::JOB_ERROR)
+            appendLogText(i18n("Job '%1' is terminated due to errors.", currentJob->getName()));
+        else
+            appendLogText(i18n("Job '%1' is aborted.", currentJob->getName()));
 
         // Always reset job stage
         currentJob->setStage(SchedulerJob::STAGE_IDLE);
 
-        setCurrentJob(nullptr);
+        if (errorHandlingRestartImmediatelyButton->isChecked())
+        {
+            // reset the state so that it will be restarted
+            currentJob->setState(SchedulerJob::JOB_EVALUATION);
+
+            appendLogText(i18n("Waiting %1 seconds to restart job '%2'.", errorHandlingDelaySB->value(), currentJob->getName()));
+
+            // wait the given delay until the jobs will be evaluated again
+            sleepTimer.setInterval(( errorHandlingDelaySB->value() * 1000));
+            sleepTimer.start();
+            sleepLabel->setToolTip(i18n("Scheduler waits for a retry."));
+            sleepLabel->show();
+            return;
+        }
+
+        // otherwise start re-evaluation
         schedulerTimer.start();
-    }
-    else if (currentJob->getState() == SchedulerJob::JOB_ABORTED)
-    {
-        // Stop Guiding if it was used
-        stopGuiding();
-
-        appendLogText(i18n("Job '%1' is aborted.", currentJob->getName()));
-
-        // Always reset job stage
-        currentJob->setStage(SchedulerJob::STAGE_IDLE);
-
         setCurrentJob(nullptr);
-        schedulerTimer.start();
     }
     // Job is complete, so check completion criteria to optimize processing
     // In any case, we're done whether the job completed successfully or not.
@@ -5821,6 +5847,7 @@ void Scheduler::sortJobsPerAltitude()
     }
 }
 
+
 void Scheduler::updatePreDawn()
 {
     double earlyDawn = Dawn - Options::preDawnTime() / (60.0 * 24.0);
@@ -5868,6 +5895,38 @@ void Scheduler::resumeCheckStatus()
     disconnect(this, &Scheduler::weatherChanged, this, &Scheduler::resumeCheckStatus);
     schedulerTimer.start();
 }
+
+Scheduler::ErrorHandlingStrategy Scheduler::getErrorHandlingStrategy()
+{
+    // The UI holds the state
+    if (errorHandlingRestartAfterAllButton->isChecked())
+        return ERROR_RESTART_AFTER_TERMINATION;
+    else if (errorHandlingRestartImmediatelyButton->isChecked())
+        return ERROR_RESTART_IMMEDIATELY;
+    else
+        return ERROR_DONT_RESTART;
+
+}
+
+void Scheduler::setErrorHandlingStrategy(Scheduler::ErrorHandlingStrategy strategy)
+{
+    errorHandlingWaitLabel->setEnabled(strategy != ERROR_DONT_RESTART);
+    errorHandlingDelaySB->setEnabled(strategy != ERROR_DONT_RESTART);
+
+    switch (strategy) {
+    case ERROR_RESTART_AFTER_TERMINATION:
+       errorHandlingRestartAfterAllButton->setChecked(true);
+        break;
+    case ERROR_RESTART_IMMEDIATELY:
+       errorHandlingRestartImmediatelyButton->setChecked(true);
+        break;
+    default:
+        errorHandlingDontRestartButton->setChecked(true);
+        break;
+    }
+}
+
+
 
 void Scheduler::startMosaicTool()
 {
