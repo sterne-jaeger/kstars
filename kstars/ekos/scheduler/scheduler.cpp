@@ -6720,7 +6720,7 @@ void Scheduler::setGuideStatus(Ekos::GuideState status)
             else
             {
                 appendLogText(i18n("Warning: job '%1' guiding procedure failed, marking terminated due to errors.", currentJob->getName()));
-                currentJob->setState(SchedulerJob::JOB_ERROR);
+                currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                 findNextJob();
             }
@@ -6857,7 +6857,7 @@ void Scheduler::setFocusStatus(Ekos::FocusState status)
             else
             {
                 appendLogText(i18n("Warning: job '%1' focusing procedure failed, marking terminated due to errors.", currentJob->getName()));
-                currentJob->setState(SchedulerJob::JOB_ERROR);
+                currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                 findNextJob();
             }
