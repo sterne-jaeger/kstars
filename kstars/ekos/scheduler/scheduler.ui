@@ -717,7 +717,7 @@
             <string>Start Time</string>
            </property>
           </column>
-           <column>
+          <column>
            <property name="text">
             <string>End Time</string>
            </property>
@@ -765,8 +765,8 @@
             <property name="toolTip">
              <string>Start Scheduler</string>
             </property>
-             <property name="styleSheet">
-               <string notr="true">QPushButton:checked
+            <property name="styleSheet">
+             <string notr="true">QPushButton:checked
 {
 background-color: maroon;
 border: 1px outset;
@@ -805,7 +805,7 @@ font-weight:bold;
              <string>Pause Scheduler</string>
             </property>
             <property name="styleSheet">
-               <string notr="true">QPushButton:checked
+             <string notr="true">QPushButton:checked
 {
 background-color: maroon;
 border: 1px outset;
@@ -816,7 +816,7 @@ font-weight:bold;
              <string/>
             </property>
             <property name="checkable">
-               <bool>true</bool>
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -975,7 +975,7 @@ font-weight:bold;
              <string>start the job on the specified date and time</string>
             </property>
             <property name="text">
-             <string>On</string>
+             <string>O&amp;n</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">startupButtonGroup</string>
@@ -1214,7 +1214,7 @@ font-weight:bold;
           <item>
            <widget class="QRadioButton" name="repeatCompletionR">
             <property name="text">
-             <string>Repeat for</string>
+             <string>&amp;Repeat for</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">completionButtonGroup</string>
@@ -1327,9 +1327,9 @@ font-weight:bold;
     <widget class="QGroupBox" name="errorHandlingGroup">
      <property name="toolTip">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Define what should happen when a job steps into an error or aborts:&lt;/p&gt;
-&lt;ul &quot;&gt;
+&lt;ul&gt;
 &lt;li&gt;&lt;b&gt;don't restart&lt;/b&gt;: Don't restart the job in case of an error or an abort.&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;restart after all terminated&lt;/b&gt;: If a job runs into an error or gets aborted, the scheduler will try to restart it if there is no job left that might be started. This might be the case when all jobs have been terminated or the startup conditions of the remaining jobs a lying in the future. Before these jobs will be restarted, the scheduler waits for the given delay.&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;restart after all terminated&lt;/b&gt;: If a job runs into an error or gets aborted, the scheduler will only try to restart it, if there is no other job left that might be started. This might be the case when all jobs have been terminated or the startup conditions of the remaining jobs are lying in the future. Before these jobs will be restarted, the scheduler waits for the given delay.&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;restart immediately&lt;/b&gt;: As soon as a job runs into an error or gets aborted, the scheduler will wait the given delay and then will try to restart the job. This will be repeated until another job get's higher priority.&lt;/li&gt;
 &lt;/ul&gt;
 &lt;/body&gt;&lt;/html&gt;</string>
