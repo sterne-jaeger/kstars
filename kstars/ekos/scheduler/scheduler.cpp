@@ -1398,10 +1398,14 @@ void Scheduler::evaluateJobs()
     /* First, filter out non-schedulable jobs */
     /* FIXME: jobs in state JOB_ERROR should not be in the list, reorder states */
     QList<SchedulerJob *> sortedJobs = jobs;
+
+    // 2019-06-18 (sterne-jaeger) disabled since changing the order creates problems with restarting
+    /*
     sortedJobs.erase(std::remove_if(sortedJobs.begin(), sortedJobs.end(), [](SchedulerJob * job)
     {
         return SchedulerJob::JOB_ABORTED < job->getState();
     }), sortedJobs.end());
+    */
 
     /* Then enumerate SchedulerJobs to consolidate imaging time */
     foreach (SchedulerJob *job, sortedJobs)
@@ -1543,7 +1547,8 @@ void Scheduler::evaluateJobs()
     {
         // If we reorder, remove all non-runnable jobs so that they end up at the end of the list and do not disturb the reorder
         // We tested that the list could not be empty after that operation above
-        sortedJobs.erase(std::remove_if(sortedJobs.begin(), sortedJobs.end(), neither_evaluated_nor_aborted), sortedJobs.end());
+        // 2019-06-18 (sterne-jaeger): Disabled since changing the order creates problems with restarting
+        // sortedJobs.erase(std::remove_if(sortedJobs.begin(), sortedJobs.end(), neither_evaluated_nor_aborted), sortedJobs.end());
 
         using namespace std::placeholders;
         std::stable_sort(sortedJobs.begin(), sortedJobs.end(),
@@ -2008,13 +2013,15 @@ void Scheduler::evaluateJobs()
         }
     }
 
+    // 2019-06-17 (sterne-jaeger): disabled, do not re-sort the job list since this creates problems when restarting
+#if 0
     /* Remove unscheduled jobs that may have appeared during the last step - safeguard */
     sortedJobs.erase(std::remove_if(sortedJobs.begin(), sortedJobs.end(), [](SchedulerJob * job)
     {
         SchedulerJob::JOBStatus const s = job->getState();
         return SchedulerJob::JOB_SCHEDULED != s && SchedulerJob::JOB_ABORTED != s;
     }), sortedJobs.end());
-
+#endif
     /* Apply sorting to queue table, and mark it for saving if it changes */
     mDirty = reorderJobs(sortedJobs) | mDirty;
 
