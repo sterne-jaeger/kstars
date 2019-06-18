@@ -197,9 +197,9 @@ Scheduler::Scheduler()
     connect(twilightCheck, &QCheckBox::toggled, this, &Scheduler::checkTwilightWarning);
 
     // default set error handling strategy to not restart
-    errorHandlingDontRestartButton->setChecked(true);
+    errorHandlingRestartAfterAllButton->setChecked(true);
     // not implemented yet
-    errorHandlingRestartAfterAllButton->setVisible(false);
+    errorHandlingDontRestartButton->setVisible(false);
 
     loadProfiles();
 
@@ -4423,10 +4423,11 @@ void Scheduler::findNextJob()
         // Always reset job stage
         currentJob->setStage(SchedulerJob::STAGE_IDLE);
 
-        if (errorHandlingRestartImmediatelyButton->isChecked())
+        // restart aborted jobs immediately, if error handling strategy is set to "restart immediately"
+        if (errorHandlingRestartImmediatelyButton->isChecked() && currentJob->getState() == SchedulerJob::JOB_ABORTED)
         {
             // reset the state so that it will be restarted
-            currentJob->setState(SchedulerJob::JOB_EVALUATION);
+            currentJob->setState(SchedulerJob::JOB_SCHEDULED);
 
             appendLogText(i18n("Waiting %1 seconds to restart job '%2'.", errorHandlingDelaySB->value(), currentJob->getName()));
 
