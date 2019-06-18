@@ -1335,7 +1335,7 @@ font-weight:bold;
 &lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="title">
-      <string>Error Handling</string>
+      <string>Handling of aborted jobs</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
       <property name="horizontalSpacing">
