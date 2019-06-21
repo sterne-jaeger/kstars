@@ -1528,6 +1528,22 @@ void Scheduler::evaluateJobs()
             if (SchedulerJob::JOB_ABORTED == job->getState())
                 job->setState(SchedulerJob::JOB_EVALUATION);
         });
+
+        if (errorHandlingRestartAfterAllButton->isChecked())
+        {
+            // interrupt regular status checks during the sleep time
+            schedulerTimer.stop();
+
+            // but before we restart them, we wait for the given delay.
+            appendLogText(i18n("All jobs aborted. Waiting %1 seconds to re-schedule.", errorHandlingDelaySB->value()));
+
+            // wait the given delay until the jobs will be evaluated again
+            sleepTimer.setInterval(( errorHandlingDelaySB->value() * 1000));
+            sleepTimer.start();
+            sleepLabel->setToolTip(i18n("Scheduler waits for a retry."));
+            sleepLabel->show();
+            // we continue to determine which job should be running, when the delay is over
+        }
     }
 
     /* If option says so, reorder by altitude and priority before sequencing */
