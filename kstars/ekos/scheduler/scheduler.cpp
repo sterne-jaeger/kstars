@@ -198,8 +198,6 @@ Scheduler::Scheduler()
 
     // default set error handling strategy to not restart
     errorHandlingRestartAfterAllButton->setChecked(true);
-    // not implemented yet
-    errorHandlingDontRestartButton->setVisible(false);
 
     loadProfiles();
 
@@ -1520,7 +1518,8 @@ void Scheduler::evaluateJobs()
     }
 
     /* If there are only aborted jobs that can run, reschedule those */
-    if (std::all_of(sortedJobs.begin(), sortedJobs.end(), finished_or_aborted))
+    if (std::all_of(sortedJobs.begin(), sortedJobs.end(), finished_or_aborted) &&
+            errorHandlingDontRestartButton->isChecked() == false)
     {
         appendLogText(i18n("Only aborted jobs left in the scheduler queue, rescheduling those."));
         std::for_each(sortedJobs.begin(), sortedJobs.end(), [](SchedulerJob * job)
@@ -2043,7 +2042,8 @@ void Scheduler::evaluateJobs()
         return;
     }
     /* If there are only aborted jobs that can run, reschedule those and let Scheduler restart one loop */
-    else if (std::all_of(sortedJobs.begin(), sortedJobs.end(), finished_or_aborted))
+    else if (std::all_of(sortedJobs.begin(), sortedJobs.end(), finished_or_aborted) &&
+             errorHandlingDontRestartButton->isChecked() == false)
     {
         appendLogText(i18n("Only aborted jobs left in the scheduler queue after evaluating, rescheduling those."));
         std::for_each(sortedJobs.begin(), sortedJobs.end(), [](SchedulerJob * job)
