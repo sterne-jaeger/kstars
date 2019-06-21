@@ -1329,8 +1329,8 @@ font-weight:bold;
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Define what should happen when a job steps into an error or aborts:&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;b&gt;don't restart&lt;/b&gt;: Don't restart the job in case of an error or an abort.&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;restart after all terminated&lt;/b&gt;: If a job runs into an error or gets aborted, the scheduler will only try to restart it, if there is no other job left that might be started. This might be the case when all jobs have been terminated or the startup conditions of the remaining jobs are lying in the future. Before these jobs will be restarted, the scheduler waits for the given delay.&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;restart immediately&lt;/b&gt;: As soon as a job runs into an error or gets aborted, the scheduler will wait the given delay and then will try to restart the job. This will be repeated until another job get's higher priority.&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;re-schedule after all terminated&lt;/b&gt;: If a job gets aborted, the scheduler will only re-schedule it if when all jobs are finished or aborted. If this is the case, the scheduler re-schedules all aborted jobs and sleeps for the given delay.&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;re-schedule immediately&lt;/b&gt;: As soon as a job gets aborted, the scheduler will re-schedule it and waits the given delay.&lt;/li&gt;
 &lt;/ul&gt;
 &lt;/body&gt;&lt;/html&gt;</string>
      </property>
@@ -1354,21 +1354,21 @@ font-weight:bold;
       <item row="0" column="0" colspan="2">
        <widget class="QRadioButton" name="errorHandlingDontRestartButton">
         <property name="text">
-         <string>don't restart</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="3">
-       <widget class="QRadioButton" name="errorHandlingRestartImmediatelyButton">
-        <property name="text">
-         <string>restart immediately</string>
+         <string>don't re-schedule</string>
         </property>
        </widget>
       </item>
       <item row="0" column="2">
+       <widget class="QRadioButton" name="errorHandlingRestartImmediatelyButton">
+        <property name="text">
+         <string>re-schedule immediately</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
        <widget class="QRadioButton" name="errorHandlingRestartAfterAllButton">
         <property name="text">
-         <string>restart after all terminated</string>
+         <string>re-schedule after all finished</string>
         </property>
        </widget>
       </item>
