@@ -1317,6 +1317,10 @@ bool Capture::startNextExposure()
         // execute flip before next capture
         return false;
 
+    if (startFocusIfRequired())
+        // re-focus before next capture
+        return false;
+
     if (seqDelay > 0)
     {
         secondsLabel->setText(i18n("Waiting..."));
@@ -1714,7 +1718,7 @@ bool Capture::startFocusIfRequired()
     // check if time for forced refocus
     if (refocusEveryNCheck->isChecked())
     {
-        qCDebug(KSTARS_EKOS_CAPTURE) << "NFocus Elapsed Time (secs): " << getRefocusEveryNTimerElapsedSec() << " Requested Interval (secs): " << refocusEveryN->value() * 60;
+        qCDebug(KSTARS_EKOS_CAPTURE) << "Focus elapsed time (secs): " << getRefocusEveryNTimerElapsedSec() << ". Requested Interval (secs): " << refocusEveryN->value() * 60;
         isRefocus = getRefocusEveryNTimerElapsedSec() >= refocusEveryN->value() * 60;
     }
     else
@@ -2952,7 +2956,8 @@ void Capture::updatePreCaptureCalibrationStatus()
         return;
     else if (rc == IPS_BUSY)
     {
-        if (meridianFlipStage == MF_NONE)
+        // Clear the label if we are neither executing a meridian flip nor re-focusing
+        if (meridianFlipStage == MF_NONE && m_State != CAPTURE_FOCUSING)
             secondsLabel->clear();
         QTimer::singleShot(1000, this, &Ekos::Capture::updatePreCaptureCalibrationStatus);
         return;
@@ -3165,7 +3170,17 @@ void Capture::setFocusStatus(FocusState state)
     {
         secondsLabel->setText(QString());
 
-        if (focusState == FOCUS_COMPLETE)
+        // if the focusing has been started during the calibration, return to the calibration
+        if (calibrationStage == CAL_FOCUSING)
+        {
+            if (focusState == FOCUS_COMPLETE)
+                appendLogText(i18n("Focus complete."));
+            else if (focusState == FOCUS_FAILED)
+                appendLogText(i18n("Autofocus failed (ignored)."));
+            // set the calibration stage to ensure that the calibration continues
+            calibrationStage = CAL_FOCUSED;
+        }
+        else if (focusState == FOCUS_COMPLETE)
         {
             appendLogText(i18n("Focus complete."));
             startNextExposure();
@@ -4968,6 +4983,12 @@ IPState Capture::processPreCaptureCalibrationStage()
         // step 3: check if meridian flip is required
         if (checkMeridianFlip())
             return IPS_BUSY;
+        // step 4: check if re-focusing is required
+        if (calibrationStage == CAL_FOCUSING || startFocusIfRequired())
+        {
+            calibrationStage = CAL_FOCUSING;
+            return IPS_BUSY;
+        }
 
         calibrationStage = CAL_PRECAPTURE_COMPLETE;
 
