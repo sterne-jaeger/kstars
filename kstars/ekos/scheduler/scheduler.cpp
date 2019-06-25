@@ -3114,7 +3114,7 @@ void Scheduler::checkJobStage()
         {
             appendLogText(i18n("Job '%1' reached completion time %2, stopping.", currentJob->getName(),
                                currentJob->getCompletionTime().toString(currentJob->getDateTimeDisplayFormat())));
-            currentJob->setState(SchedulerJob::JOB_ABORTED);
+            currentJob->setState(SchedulerJob::JOB_COMPLETE);
             stopCurrentJobAction();
             stopGuiding();
             findNextJob();
@@ -3140,7 +3140,7 @@ void Scheduler::checkJobStage()
                                    QString("%L1").arg(p.alt().Degrees(), 0, 'f', minAltitude->decimals()),
                                    QString("%L1").arg(currentJob->getMinAltitude(), 0, 'f', minAltitude->decimals())));
 
-                currentJob->setState(SchedulerJob::JOB_ABORTED);
+                currentJob->setState(SchedulerJob::JOB_COMPLETE);
                 stopCurrentJobAction();
                 stopGuiding();
                 findNextJob();
@@ -3166,7 +3166,7 @@ void Scheduler::checkJobStage()
                                    "degrees), marking aborted.",
                                    moonSeparation, currentJob->getName(), currentJob->getMinMoonSeparation()));
 
-                currentJob->setState(SchedulerJob::JOB_ABORTED);
+                currentJob->setState(SchedulerJob::JOB_COMPLETE);
                 stopCurrentJobAction();
                 stopGuiding();
                 findNextJob();
@@ -3185,7 +3185,7 @@ void Scheduler::checkJobStage()
             appendLogText(i18n(
                               "Job '%3' is now approaching astronomical twilight rise limit at %1 (%2 minutes safety margin), marking aborted.",
                               preDawnDateTime.toString(), Options::preDawnTime(), currentJob->getName()));
-            currentJob->setState(SchedulerJob::JOB_ABORTED);
+            currentJob->setState(SchedulerJob::JOB_COMPLETE);
             stopCurrentJobAction();
             stopGuiding();
             findNextJob();
