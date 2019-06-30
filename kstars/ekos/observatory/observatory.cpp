@@ -38,8 +38,6 @@ Observatory::Observatory()
     weatherAlertSchedulerCB->setVisible(false);
     motionCWButton->setVisible(false);
     motionCCWButton->setVisible(false);
-    relativeMotionSB->setVisible(false);
-    motionMoveRelButton->setVisible(false);
 }
 
 void Observatory::setObseratoryStatusControl(ObservatoryStatusControl control)
@@ -70,6 +68,10 @@ void Observatory::setDomeModel(ObservatoryDomeModel *model)
             mObservatoryModel->getDomeModel()->setAzimuthPosition(absoluteMotionSB->value());
         });
 
+        connect(motionMoveRelButton, &QCheckBox::clicked, [this]()
+        {
+            mObservatoryModel->getDomeModel()->setRelativePosition(relativeMotionSB->value());
+        });
         // weather controls
         connect(weatherWarningShutterCB, &QCheckBox::clicked, this, &Observatory::weatherWarningSettingsChanged);
         connect(weatherWarningDomeCB, &QCheckBox::clicked, this, &Observatory::weatherWarningSettingsChanged);
@@ -276,9 +278,11 @@ void Observatory::setWeatherModel(ObservatoryWeatherModel *model)
 
 void Observatory::enableMotionControl(bool enabled)
 {
+    MotionBox->setEnabled(enabled);
+
+    // absolute motion controls
     if (getDomeModel()->canAbsoluteMove())
     {
-        MotionBox->setEnabled(true);
         motionMoveAbsButton->setEnabled(enabled);
         absoluteMotionSB->setEnabled(enabled);
     }
@@ -286,6 +290,18 @@ void Observatory::enableMotionControl(bool enabled)
     {
         motionMoveAbsButton->setEnabled(false);
         absoluteMotionSB->setEnabled(false);
+    }
+
+    // relative motion controls
+    if (getDomeModel()->canRelativeMove())
+    {
+        motionMoveRelButton->setEnabled(enabled);
+        relativeMotionSB->setEnabled(enabled);
+    }
+    else
+    {
+        motionMoveRelButton->setEnabled(false);
+        relativeMotionSB->setEnabled(false);
     }
 
 

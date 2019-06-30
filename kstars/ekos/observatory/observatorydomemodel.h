@@ -52,6 +52,16 @@ class ObservatoryDomeModel: public QObject
             return (mDome != nullptr && mDome->canAbsoluteMove());
         }
 
+        void setRelativePosition(double position)
+        {
+            mDome->setRelativePosition(position);
+        }
+
+        bool canRelativeMove()
+        {
+            return (mDome != nullptr && mDome->canRelativeMove());
+        }
+
         bool hasShutter()
         {
             return (mDome != nullptr && mDome->hasShutter());

@@ -65,6 +65,11 @@ class Dome : public QObject
 
     /**
      * DBUS interface function.
+     * Can dome move to an relative azimuth position?
+     */
+    Q_SCRIPTABLE bool canRelativeMove();
+    /**
+     * DBUS interface function.
      * Park dome
      */
     Q_SCRIPTABLE bool park();
@@ -90,6 +95,7 @@ class Dome : public QObject
 
     Q_SCRIPTABLE double azimuthPosition();
     Q_SCRIPTABLE void setAzimuthPosition(double position);
+    Q_SCRIPTABLE void setRelativePosition(double position);
 
     Q_SCRIPTABLE bool hasShutter();
     Q_SCRIPTABLE bool controlShutter(bool open);

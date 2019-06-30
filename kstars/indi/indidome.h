@@ -68,6 +68,10 @@ public:
         {
             return m_CanAbsMove;
         }
+        bool canRelMove() const
+        {
+            return m_CanRelMove;
+        }
         bool canAbort() const
         {
             return m_CanAbort;
@@ -80,6 +84,7 @@ public:
 
         double azimuthPosition() const;
         bool setAzimuthPosition(double position);
+        bool setRelativePosition(double position);
 
 
         bool hasShutter() const
@@ -113,6 +118,7 @@ public slots:
         ShutterStatus m_ShutterStatus { SHUTTER_UNKNOWN };
         Status m_Status { DOME_IDLE };
         bool m_CanAbsMove { false };
+        bool m_CanRelMove { false };
         bool m_CanPark { false };
         bool m_CanAbort { false };
         bool m_HasShutter { false };

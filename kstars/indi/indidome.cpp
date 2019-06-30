@@ -81,6 +81,10 @@ void Dome::registerProperty(INDI::Property *prop)
     {
         m_CanAbsMove = true;
     }
+    else if (!strcmp(prop->getName(), "REL_DOME_POSITION"))
+    {
+        m_CanRelMove = true;
+    }
     else if (!strcmp(prop->getName(), "DOME_ABORT_MOTION"))
     {
         m_CanAbort = true;
@@ -385,6 +389,18 @@ bool Dome::setAzimuthPosition(double position)
 
     az->np[0].value = position;
     clientManager->sendNewNumber(az);
+    return true;
+}
+
+bool Dome::setRelativePosition(double position)
+{
+    INumberVectorProperty *azDiff = baseDevice->getNumber("REL_DOME_POSITION");
+
+    if (azDiff == nullptr)
+        return false;
+
+    azDiff->np[0].value = position;
+    clientManager->sendNewNumber(azDiff);
     return true;
 }
 

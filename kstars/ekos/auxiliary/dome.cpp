@@ -111,6 +111,14 @@ bool Dome::canAbsoluteMove()
     return false;
 }
 
+bool Dome::canRelativeMove()
+{
+    if (currentDome)
+        return currentDome->canRelMove();
+
+    return false;
+}
+
 double Dome::azimuthPosition()
 {
     if (currentDome)
@@ -122,6 +130,12 @@ void Dome::setAzimuthPosition(double position)
 {
     if (currentDome)
         currentDome->setAzimuthPosition(position);
+}
+
+void Dome::setRelativePosition(double position)
+{
+    if (currentDome)
+        currentDome->setRelativePosition(position);
 }
 
 bool Dome::hasShutter()
