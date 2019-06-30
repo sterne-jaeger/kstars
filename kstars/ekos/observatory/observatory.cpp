@@ -72,6 +72,10 @@ void Observatory::setDomeModel(ObservatoryDomeModel *model)
         {
             mObservatoryModel->getDomeModel()->setRelativePosition(relativeMotionSB->value());
         });
+
+        // abort button
+        connect(motionAbortButton, &QPushButton::clicked, model, &ObservatoryDomeModel::abort);
+
         // weather controls
         connect(weatherWarningShutterCB, &QCheckBox::clicked, this, &Observatory::weatherWarningSettingsChanged);
         connect(weatherWarningDomeCB, &QCheckBox::clicked, this, &Observatory::weatherWarningSettingsChanged);
@@ -152,6 +156,8 @@ void Observatory::initDome()
             weatherAlertShutterCB->setVisible(false);
         }
 
+        motionAbortButton->setEnabled(true);
+
         setDomeStatus(getDomeModel()->status());
         setShutterStatus(getDomeModel()->shutterStatus());
     }
@@ -184,7 +190,7 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
             domeUnpark->setChecked(true);
             domeUnpark->setText(i18n("UnParked"));
             enableMotionControl(true);
-            appendLogText(i18n("Dome is unparked."));
+            appendLogText(i18n("Dome is idle."));
             break;
         case ISD::Dome::DOME_MOVING:
             enableMotionControl(false);

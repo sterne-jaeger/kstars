@@ -61,6 +61,15 @@ void ObservatoryDomeModel::unpark()
     mDome->unpark();
 }
 
+void ObservatoryDomeModel::abort()
+{
+    if (mDome == nullptr)
+        return;
+
+    emit newLog(i18n("Aborting..."));
+    mDome->abort();
+}
+
 void ObservatoryDomeModel::openShutter()
 {
     if (mDome == nullptr)

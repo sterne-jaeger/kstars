@@ -62,6 +62,8 @@ class ObservatoryDomeModel: public QObject
             return (mDome != nullptr && mDome->canRelativeMove());
         }
 
+        void abort();
+
         bool hasShutter()
         {
             return (mDome != nullptr && mDome->hasShutter());
