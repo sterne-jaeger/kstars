@@ -65,7 +65,7 @@
           </property>
           <item row="1" column="0" colspan="6">
            <layout class="QGridLayout" name="domeStatusBox">
-            <item row="7" column="0" colspan="4">
+            <item row="8" column="0" colspan="4">
              <layout class="QHBoxLayout" name="parkingBox">
               <item>
                <widget class="QPushButton" name="domePark">
@@ -178,19 +178,23 @@ font-weight:bold;
                   <height>36</height>
                  </size>
                 </property>
+                <property name="toolTip">
+                 <string>Abort dome motion</string>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">QPushButton:checked
+{
+background-color: maroon;
+border: 1px outset;
+font-weight:bold;
+}</string>
+                </property>
                 <property name="text">
                  <string>Abort</string>
                 </property>
                </widget>
               </item>
              </layout>
-            </item>
-            <item row="4" column="0" colspan="2">
-             <widget class="QLabel" name="motionStatusLabel">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
             </item>
             <item row="1" column="2" rowspan="2" colspan="2">
              <layout class="QGridLayout" name="MotionBox">
@@ -283,73 +287,6 @@ font-weight:bold;
               </item>
              </layout>
             </item>
-            <item row="0" column="2" colspan="2">
-             <widget class="QLabel" name="motionLabel">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="text">
-               <string>Motion:</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignTop">
-             <widget class="QLabel" name="domeAzimuthPositionLabel">
-              <property name="text">
-               <string>Position</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="3">
-             <widget class="QPushButton" name="motionCCWButton">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="minimumSize">
-               <size>
-                <width>96</width>
-                <height>36</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>96</width>
-                <height>36</height>
-               </size>
-              </property>
-              <property name="toolTip">
-               <string>Rotate counter clockwise</string>
-              </property>
-              <property name="text">
-               <string>CCW</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="2">
-             <widget class="QPushButton" name="motionCWButton">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="minimumSize">
-               <size>
-                <width>96</width>
-                <height>36</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>96</width>
-                <height>36</height>
-               </size>
-              </property>
-              <property name="toolTip">
-               <string>Rotate clockwise</string>
-              </property>
-              <property name="text">
-               <string>&amp;CW</string>
-              </property>
-             </widget>
-            </item>
             <item row="1" column="0" rowspan="2">
              <widget class="QLabel" name="domeAzimuthPosition">
               <property name="minimumSize">
@@ -378,6 +315,186 @@ font-weight:bold;
                <set>Qt::AlignCenter</set>
               </property>
              </widget>
+            </item>
+            <item row="3" column="3">
+             <widget class="QPushButton" name="motionCCWButton">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>96</width>
+                <height>36</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>96</width>
+                <height>36</height>
+               </size>
+              </property>
+              <property name="toolTip">
+               <string>Rotate counter clockwise</string>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">QPushButton:checked
+{
+background-color: maroon;
+border: 1px outset;
+font-weight:bold;
+}</string>
+              </property>
+              <property name="text">
+               <string>CCW</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2" colspan="2">
+             <widget class="QLabel" name="motionLabel">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Motion:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0" colspan="2">
+             <widget class="QLabel" name="motionStatusLabel">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignTop">
+             <widget class="QLabel" name="domeAzimuthPositionLabel">
+              <property name="text">
+               <string>Position</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="2">
+             <widget class="QPushButton" name="motionCWButton">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>96</width>
+                <height>36</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>96</width>
+                <height>36</height>
+               </size>
+              </property>
+              <property name="toolTip">
+               <string>Rotate clockwise</string>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">QPushButton:checked
+{
+background-color: maroon;
+border: 1px outset;
+font-weight:bold;
+}</string>
+              </property>
+              <property name="text">
+               <string>&amp;CW</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0" colspan="4">
+             <layout class="QHBoxLayout" name="slavingBox">
+              <item>
+               <widget class="QLabel" name="label">
+                <property name="text">
+                 <string>Slaving</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QPushButton" name="slavingEnableButton">
+                <property name="minimumSize">
+                 <size>
+                  <width>96</width>
+                  <height>36</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>96</width>
+                  <height>36</height>
+                 </size>
+                </property>
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable slaving, dome motion &lt;span style=&quot; font-weight:600;&quot;&gt;follows telescope motion&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">QPushButton:checked
+{
+background-color: maroon;
+border: 1px outset;
+font-weight:bold;
+}</string>
+                </property>
+                <property name="text">
+                 <string>Enable</string>
+                </property>
+                <property name="checkable">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="slavingDisableButton">
+                <property name="minimumSize">
+                 <size>
+                  <width>96</width>
+                  <height>36</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>96</width>
+                  <height>36</height>
+                 </size>
+                </property>
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Disable slaving, dome &lt;span style=&quot; font-weight:600;&quot;&gt;does not follow telescope motion&lt;/span&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">QPushButton:checked
+{
+background-color: maroon;
+border: 1px outset;
+font-weight:bold;
+}</string>
+                </property>
+                <property name="text">
+                 <string>Disable</string>
+                </property>
+                <property name="checkable">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>

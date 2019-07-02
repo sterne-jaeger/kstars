@@ -61,6 +61,7 @@ void Observatory::setDomeModel(ObservatoryDomeModel *model)
         connect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
         connect(model, &Ekos::ObservatoryDomeModel::newShutterStatus, this, &Ekos::Observatory::setShutterStatus);
         connect(model, &Ekos::ObservatoryDomeModel::azimuthPositionChanged, this, &Ekos::Observatory::domeAzimuthChanged);
+        connect(model, &Ekos::ObservatoryDomeModel::newAutoSyncStatus, this, &Ekos::Observatory::showAutoSync);
 
         // motion controls
         connect(motionMoveAbsButton, &QCheckBox::clicked, [this]()
@@ -158,8 +159,21 @@ void Observatory::initDome()
 
         motionAbortButton->setEnabled(true);
 
+        // slaving
+        connect(slavingEnableButton, &QPushButton::clicked, this, [this]()
+        {
+            enableAutoSync(true);
+        });
+        connect(slavingDisableButton, &QPushButton::clicked, this, [this]()
+        {
+            enableAutoSync(false);
+        });
+
+
         setDomeStatus(getDomeModel()->status());
         setShutterStatus(getDomeModel()->shutterStatus());
+
+        enableAutoSync(getDomeModel()->isAutoSync());
     }
 
 }
@@ -311,6 +325,23 @@ void Observatory::enableMotionControl(bool enabled)
     }
 
 
+}
+
+void Observatory::enableAutoSync(bool enabled)
+{
+    if (getDomeModel() == nullptr)
+        showAutoSync(false);
+    else
+    {
+        getDomeModel()->setAutoSync(enabled);
+        showAutoSync(enabled);
+    }
+}
+
+void Observatory::showAutoSync(bool enabled)
+{
+    slavingEnableButton->setChecked(enabled);
+    slavingDisableButton->setChecked(! enabled);
 }
 
 void Observatory::initWeather()

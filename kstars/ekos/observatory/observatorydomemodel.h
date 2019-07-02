@@ -62,6 +62,13 @@ class ObservatoryDomeModel: public QObject
             return (mDome != nullptr && mDome->canRelativeMove());
         }
 
+        bool isAutoSync()
+        {
+            return (mDome != nullptr && mDome->isAutoSync());
+        }
+
+        void setAutoSync(bool activate);
+
         void abort();
 
         bool hasShutter()
@@ -81,6 +88,7 @@ class ObservatoryDomeModel: public QObject
     signals:
         void newStatus(ISD::Dome::Status state);
         void newShutterStatus(ISD::Dome::ShutterStatus status);
+        void newAutoSyncStatus(bool enabled);
         void azimuthPositionChanged(double position);
         void ready();
         void disconnected();

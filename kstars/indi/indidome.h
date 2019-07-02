@@ -91,6 +91,11 @@ public:
         {
             return m_HasShutter;
         }
+
+        // slaving
+        bool isAutoSync();
+        bool setAutoSync(bool activate);
+
         Status status() const
         {
             return m_Status;
@@ -110,6 +115,7 @@ public slots:
         void newStatus(Status status);
         void newParkStatus(ParkStatus status);
         void newShutterStatus(ShutterStatus status);
+        void newAutoSyncStatus(bool enabled);
         void azimuthPositionChanged(double Az);
         void ready();
 
