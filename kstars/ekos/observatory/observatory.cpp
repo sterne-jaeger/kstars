@@ -422,7 +422,7 @@ void Observatory::observatoryStatusChanged(bool ready)
 
 void Observatory::domeAzimuthChanged(double position)
 {
-    domeAzimuthPosition->setText(QString().sprintf("%0.2f°", position));
+    domeAzimuthPosition->setText(QString::number(position, 'f', 2));
 }
 
 
