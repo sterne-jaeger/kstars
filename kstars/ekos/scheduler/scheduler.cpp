@@ -196,8 +196,27 @@ Scheduler::Scheduler()
 
     connect(twilightCheck, &QCheckBox::toggled, this, &Scheduler::checkTwilightWarning);
 
-    // default set error handling strategy to not restart
-    errorHandlingRestartAfterAllButton->setChecked(true);
+    // restore default values for error handling strategy
+    setErrorHandlingStrategy(static_cast<ErrorHandlingStrategy>(Options::errorHandlingStrategy()));
+    errorHandlingRescheduleErrorsCB->setChecked(Options::rescheduleErrors());
+    errorHandlingDelaySB->setValue(Options::errorHandlingStrategyDelay());
+
+    // save new default values for error handling strategy
+
+    connect(errorHandlingRescheduleErrorsCB, &QPushButton::clicked, [this](bool checked)
+    {
+        Options::setRescheduleErrors(checked);
+    });
+    connect(errorHandlingButtonGroup, static_cast<void (QButtonGroup::*)(QAbstractButton *)>(&QButtonGroup::buttonClicked), [this](QAbstractButton *button)
+    {
+        Q_UNUSED(button);
+        Options::setErrorHandlingStrategy(getErrorHandlingStrategy());
+    });
+    connect(errorHandlingDelaySB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), [this](int value)
+    {
+        Options::setErrorHandlingStrategyDelay(value);
+    });
+
 
     loadProfiles();
 
@@ -241,6 +260,7 @@ void Scheduler::watchJobChanges(bool enable)
     QButtonGroup * const buttonGroups[] =
     {
         stepsButtonGroup,
+        errorHandlingButtonGroup,
         startupButtonGroup,
         constraintButtonGroup,
         completionButtonGroup,
@@ -248,11 +268,17 @@ void Scheduler::watchJobChanges(bool enable)
         shutdownProcedureGroup
     };
 
+    QAbstractButton * const buttons[] =
+    {
+        errorHandlingRescheduleErrorsCB
+    };
+
     QSpinBox * const spinBoxes[] =
     {
         culminationOffset,
         repeatsSpin,
-        prioritySpin
+        prioritySpin,
+        errorHandlingDelaySB
     };
 
     QDoubleSpinBox * const dspinBoxes[] =
@@ -292,6 +318,11 @@ void Scheduler::watchJobChanges(bool enable)
         {
             setDirty();
         });
+        for (auto * const control : buttons)
+            connect(control, static_cast<void (QAbstractButton::*)(bool)>(&QAbstractButton::clicked), this, [this](bool)
+        {
+            setDirty();
+        });
         for (auto * const control : spinBoxes)
             connect(control, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, [this]()
         {
@@ -316,6 +347,8 @@ void Scheduler::watchJobChanges(bool enable)
             disconnect(control, &QDateTimeEdit::editingFinished, this, nullptr);
         for (auto * const control : comboBoxes)
             disconnect(control, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, nullptr);
+        for (auto * const control : buttons)
+            disconnect(control, static_cast<void (QAbstractButton::*)(bool)>(&QAbstractButton::clicked), this, nullptr);
         for (auto * const control : buttonGroups)
             disconnect(control, static_cast<void (QButtonGroup::*)(int, bool)>(&QButtonGroup::buttonToggled), this, nullptr);
         for (auto * const control : spinBoxes)
@@ -3868,6 +3901,11 @@ bool Scheduler::loadScheduler(const QString &fileURL)
                     {
                         errorHandlingDelaySB->setValue(cLocale.toInt(pcdataXMLEle(subEP)));
                     }
+                    subEP = findXMLEle(ep, "RescheduleErrors");
+                    if (subEP)
+                    {
+                        errorHandlingRescheduleErrorsCB->setChecked(!strcmp(findXMLAttValu(subEP, "enabled"), "true"));
+                    }
                 }
                 else if (!strcmp(tag, "StartupProcedure"))
                 {
@@ -4220,6 +4258,7 @@ bool Scheduler::saveScheduler(const QUrl &fileURL)
     }
 
     outstream << "<ErrorHandlingStrategy value='" << getErrorHandlingStrategy() << "'>" << endl;
+    outstream << "<RescheduleErrors enabled='" << QVariant(errorHandlingRescheduleErrorsCB->isChecked()).toString() << "' />" << endl;
     outstream << "<delay>" << errorHandlingDelaySB->value() << "</delay>" << endl;
     outstream << "</ErrorHandlingStrategy>" << endl;
 
