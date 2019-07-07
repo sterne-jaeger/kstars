@@ -1440,18 +1440,18 @@ void Scheduler::evaluateJobs()
                 /* If job is scheduled, keep it for evaluation against others */
                 break;
 
-            case SchedulerJob::JOB_ERROR:
             case SchedulerJob::JOB_INVALID:
             case SchedulerJob::JOB_COMPLETE:
-                /* If job is in error, invalid or complete, bypass evaluation */
+                /* If job is invalid or complete, bypass evaluation */
                 continue;
 
             case SchedulerJob::JOB_BUSY:
                 /* If job is busy, edge case, bypass evaluation */
                 continue;
 
+            case SchedulerJob::JOB_ERROR:
             case SchedulerJob::JOB_ABORTED:
-                /* If job is aborted and we're running, keep its evaluation until there is nothing else to do */
+                /* If job is in error or aborted and we're running, keep its evaluation until there is nothing else to do */
                 if (state == SCHEDULER_RUNNING)
                     continue;
             /* Fall through */
@@ -1534,6 +1534,13 @@ void Scheduler::evaluateJobs()
         return SchedulerJob::JOB_EVALUATION != s && SchedulerJob::JOB_ABORTED != s;
     };
 
+    /* This predicate matches jobs neither being evaluated nor aborted nor in error state */
+    auto neither_evaluated_nor_aborted_nor_error = [](SchedulerJob const * const job)
+    {
+        SchedulerJob::JOBStatus const s = job->getState();
+        return SchedulerJob::JOB_EVALUATION != s && SchedulerJob::JOB_ABORTED != s && SchedulerJob::JOB_ERROR != s;
+    };
+
     /* This predicate matches jobs that aborted, or completed for whatever reason */
     auto finished_or_aborted = [](SchedulerJob const * const job)
     {
@@ -1541,8 +1548,11 @@ void Scheduler::evaluateJobs()
         return SchedulerJob::JOB_ERROR <= s || SchedulerJob::JOB_ABORTED == s;
     };
 
+    bool nea  = std::all_of(sortedJobs.begin(), sortedJobs.end(), neither_evaluated_nor_aborted);
+    bool neae = std::all_of(sortedJobs.begin(), sortedJobs.end(), neither_evaluated_nor_aborted_nor_error);
+
     /* If there are no jobs left to run in the filtered list, stop evaluation */
-    if (sortedJobs.isEmpty() || std::all_of(sortedJobs.begin(), sortedJobs.end(), neither_evaluated_nor_aborted))
+    if (sortedJobs.isEmpty() || (!errorHandlingRescheduleErrorsCB->isChecked() && nea) || (errorHandlingRescheduleErrorsCB->isChecked() && neae))
     {
         appendLogText(i18n("No jobs left in the scheduler queue."));
         setCurrentJob(nullptr);
@@ -1554,12 +1564,17 @@ void Scheduler::evaluateJobs()
     if (std::all_of(sortedJobs.begin(), sortedJobs.end(), finished_or_aborted) &&
             errorHandlingDontRestartButton->isChecked() == false)
     {
-        appendLogText(i18n("Only aborted jobs left in the scheduler queue, rescheduling those."));
-        std::for_each(sortedJobs.begin(), sortedJobs.end(), [](SchedulerJob * job)
+        appendLogText(i18n("Only %1 jobs left in the scheduler queue, rescheduling those.",
+                           errorHandlingRescheduleErrorsCB->isChecked() ? "aborted or error" : "aborted"));
+
+        // set aborted and error jobs to evaluation state
+        for (int index = 0; index < sortedJobs.size(); index++)
         {
-            if (SchedulerJob::JOB_ABORTED == job->getState())
+            SchedulerJob * const job = sortedJobs.at(index);
+            if (SchedulerJob::JOB_ABORTED == job->getState() ||
+                    (errorHandlingRescheduleErrorsCB->isChecked() && SchedulerJob::JOB_ERROR == job->getState()))
                 job->setState(SchedulerJob::JOB_EVALUATION);
-        });
+        }
 
         if (errorHandlingRestartAfterAllButton->isChecked())
         {
@@ -4456,7 +4471,9 @@ void Scheduler::findNextJob()
         currentJob->setStage(SchedulerJob::STAGE_IDLE);
 
         // restart aborted jobs immediately, if error handling strategy is set to "restart immediately"
-        if (errorHandlingRestartImmediatelyButton->isChecked() && currentJob->getState() == SchedulerJob::JOB_ABORTED)
+        if (errorHandlingRestartImmediatelyButton->isChecked() &&
+                (currentJob->getState() == SchedulerJob::JOB_ABORTED ||
+                 (currentJob->getState() == SchedulerJob::JOB_ERROR && errorHandlingRescheduleErrorsCB->isChecked())))
         {
             // reset the state so that it will be restarted
             currentJob->setState(SchedulerJob::JOB_SCHEDULED);
