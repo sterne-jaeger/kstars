@@ -3168,26 +3168,32 @@ void Capture::setFocusStatus(FocusState state)
 
     if ((isRefocus || isInSequenceFocus) && activeJob && activeJob->getStatus() == SequenceJob::JOB_BUSY)
     {
-        secondsLabel->setText(QString());
-
-        // if the focusing has been started during the calibration, return to the calibration
-        if (calibrationStage == CAL_FOCUSING)
+        // if the focusing has been started during the post-calibration, return to the calibration
+        if (calibrationStage < CAL_PRECAPTURE_COMPLETE && m_State == CAPTURE_FOCUSING)
         {
             if (focusState == FOCUS_COMPLETE)
+            {
                 appendLogText(i18n("Focus complete."));
+                secondsLabel->setText(i18n("Focus complete."));
+                m_State = CAPTURE_PROGRESS;
+            }
             else if (focusState == FOCUS_FAILED)
-                appendLogText(i18n("Autofocus failed (ignored)."));
-            // set the calibration stage to ensure that the calibration continues
-            calibrationStage = CAL_FOCUSED;
+            {
+                appendLogText(i18n("Autofocus failed."));
+                secondsLabel->setText(i18n("Autofocus failed."));
+                abort();
+            }
         }
         else if (focusState == FOCUS_COMPLETE)
         {
             appendLogText(i18n("Focus complete."));
+            secondsLabel->setText(i18n("Focus complete."));
             startNextExposure();
         }
         else if (focusState == FOCUS_FAILED)
         {
             appendLogText(i18n("Autofocus failed. Aborting exposure..."));
+            secondsLabel->setText(i18n("Autofocus failed."));
             abort();
         }
     }
@@ -3245,8 +3251,10 @@ void Capture::setMeridianFlipStage(MFStage status)
                 if (m_State == CAPTURE_PAUSED)
                     // paused after meridian flip
                     secondsLabel->setText(i18n("Paused..."));
+                /* disabled since the focusing label will be overwritten
                 else
                     secondsLabel->setText("");
+                    */
                 meridianFlipStage = status;
                 break;
 
@@ -4984,9 +4992,9 @@ IPState Capture::processPreCaptureCalibrationStage()
         if (checkMeridianFlip())
             return IPS_BUSY;
         // step 4: check if re-focusing is required
-        if (calibrationStage == CAL_FOCUSING || startFocusIfRequired())
+        if (m_State == CAPTURE_FOCUSING || startFocusIfRequired())
         {
-            calibrationStage = CAL_FOCUSING;
+            m_State = CAPTURE_FOCUSING;
             return IPS_BUSY;
         }
 

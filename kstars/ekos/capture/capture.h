@@ -107,8 +107,6 @@ class Capture : public QWidget, public Ui::Capture
             CAL_DOME_PARKED,
             CAL_PRECAPTURE_COMPLETE,
             CAL_CALIBRATION,
-            CAL_FOCUSING,
-            CAL_FOCUSED,
             CAL_CALIBRATION_COMPLETE,
             CAL_CAPTURING,
             CAL_DUSTCAP_UNPARKING,
