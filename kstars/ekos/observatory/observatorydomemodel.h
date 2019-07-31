@@ -62,6 +62,11 @@ class ObservatoryDomeModel: public QObject
             return (domeInterface != nullptr && domeInterface->canRelativeMove());
         }
 
+        bool isRolloffRoof()
+        {
+            return (domeInterface != nullptr && domeInterface->isRolloffRoof());
+        }
+
         bool isAutoSync()
         {
             return (domeInterface != nullptr && domeInterface->isAutoSync());

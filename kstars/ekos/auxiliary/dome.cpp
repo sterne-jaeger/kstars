@@ -110,6 +110,15 @@ bool Dome::isMoving()
     return currentDome->isMoving();
 }
 
+bool Dome::isRolloffRoof()
+{
+    // a rolloff roof is a dome that can move neither absolutely nor relatively
+    if (currentDome)
+        return (!currentDome->canAbsMove() && !currentDome->canRelMove());
+
+    return false;
+}
+
 bool Dome::canAbsoluteMove()
 {
     if (currentDome)

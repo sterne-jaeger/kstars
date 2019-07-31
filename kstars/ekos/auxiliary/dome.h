@@ -93,6 +93,7 @@ class Dome : public QObject
          */
         Q_SCRIPTABLE bool isMoving();
 
+        Q_SCRIPTABLE bool isRolloffRoof();
 
         Q_SCRIPTABLE double azimuthPosition();
         Q_SCRIPTABLE void setAzimuthPosition(double position);

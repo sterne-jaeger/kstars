@@ -138,9 +138,32 @@ void Observatory::initDome()
             domeUnpark->setEnabled(false);
         }
 
-        // initialize the dome motion controls
-        domeAzimuthChanged(getDomeModel()->azimuthPosition());
+        if (getDomeModel()->isRolloffRoof())
+        {
+            MotionBox->setVisible(false);
+            SlavingBox->setVisible(false);
+            domeAzimuthPosition->setText("N/A");
+        }
+        else
+        {
+            // initialize the dome motion controls
+            domeAzimuthChanged(getDomeModel()->azimuthPosition());
 
+
+            motionAbortButton->setEnabled(true);
+
+            // slaving
+            connect(slavingEnableButton, &QPushButton::clicked, this, [this]()
+            {
+                enableAutoSync(true);
+            });
+            connect(slavingDisableButton, &QPushButton::clicked, this, [this]()
+            {
+                enableAutoSync(false);
+            });
+        }
+
+        // shutter handling
         if (getDomeModel()->hasShutter())
         {
             shutterBox->setVisible(true);
@@ -149,31 +172,18 @@ void Observatory::initDome()
             connect(shutterClosed, &QPushButton::clicked, getDomeModel(), &Ekos::ObservatoryDomeModel::closeShutter);
             shutterClosed->setEnabled(true);
             shutterOpen->setEnabled(true);
+            setShutterStatus(getDomeModel()->shutterStatus());
+            useShutterCB->setVisible(true);
         }
         else
         {
             shutterBox->setVisible(false);
             weatherWarningShutterCB->setVisible(false);
             weatherAlertShutterCB->setVisible(false);
+            useShutterCB->setVisible(false);
         }
 
-        motionAbortButton->setEnabled(true);
-
-        // slaving
-        connect(slavingEnableButton, &QPushButton::clicked, this, [this]()
-        {
-            enableAutoSync(true);
-        });
-        connect(slavingDisableButton, &QPushButton::clicked, this, [this]()
-        {
-            enableAutoSync(false);
-        });
-
-
         setDomeStatus(getDomeModel()->status());
-        setShutterStatus(getDomeModel()->shutterStatus());
-
-        enableAutoSync(getDomeModel()->isAutoSync());
     }
 
 }
@@ -203,7 +213,12 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
             domePark->setText(i18n("Park"));
             domeUnpark->setChecked(true);
             domeUnpark->setText(i18n("UnParked"));
-            enableMotionControl(true);
+
+            if (getDomeModel()->isRolloffRoof())
+                domeAzimuthPosition->setText(i18n("OPEN"));
+            else
+                enableMotionControl(true);
+
             appendLogText(i18n("Dome is idle."));
             break;
         case ISD::Dome::DOME_MOVING:
@@ -215,19 +230,34 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
             domePark->setText(i18n("Parked"));
             domeUnpark->setChecked(false);
             domeUnpark->setText(i18n("UnPark"));
-            enableMotionControl(false);
+
+            if (getDomeModel()->isRolloffRoof())
+                domeAzimuthPosition->setText(i18n("CLOSED"));
+            else
+                enableMotionControl(false);
+
             appendLogText(i18n("Dome is parked."));
             break;
         case ISD::Dome::DOME_PARKING:
             domePark->setText(i18n("Parking"));
             domeUnpark->setText(i18n("UnPark"));
-            enableMotionControl(false);
+
+            if (getDomeModel()->isRolloffRoof())
+                domeAzimuthPosition->setText(i18n("CLOSING"));
+            else
+                enableMotionControl(false);
+
             appendLogText(i18n("Dome is parking..."));
             break;
         case ISD::Dome::DOME_UNPARKING:
             domePark->setText(i18n("Park"));
             domeUnpark->setText(i18n("UnParking"));
-            enableMotionControl(false);
+
+            if (getDomeModel()->isRolloffRoof())
+                domeAzimuthPosition->setText(i18n("OPENING"));
+            else
+                enableMotionControl(false);
+
             appendLogText(i18n("Dome is unparking..."));
             break;
         case ISD::Dome::DOME_TRACKING:
