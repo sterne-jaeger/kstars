@@ -209,10 +209,8 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
         case ISD::Dome::DOME_ERROR:
             break;
         case ISD::Dome::DOME_IDLE:
-            domePark->setChecked(false);
-            domePark->setText(i18n("Park"));
-            domeUnpark->setChecked(true);
-            domeUnpark->setText(i18n("UnParked"));
+            activateButton(domePark, "Park");
+            buttonPressed(domeUnpark, "UnParked");
 
             if (getDomeModel()->isRolloffRoof())
                 domeAzimuthPosition->setText(i18n("OPEN"));
@@ -221,15 +219,14 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
 
             appendLogText(i18n("Dome is idle."));
             break;
+
         case ISD::Dome::DOME_MOVING:
             enableMotionControl(false);
             appendLogText(i18n("Dome is moving..."));
             break;
         case ISD::Dome::DOME_PARKED:
-            domePark->setChecked(true);
-            domePark->setText(i18n("Parked"));
-            domeUnpark->setChecked(false);
-            domeUnpark->setText(i18n("UnPark"));
+            buttonPressed(domePark, "Parked");
+            activateButton(domeUnpark, "UnPark");
 
             if (getDomeModel()->isRolloffRoof())
                 domeAzimuthPosition->setText(i18n("CLOSED"));
@@ -238,9 +235,9 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
 
             appendLogText(i18n("Dome is parked."));
             break;
+
         case ISD::Dome::DOME_PARKING:
-            domePark->setText(i18n("Parking"));
-            domeUnpark->setText(i18n("UnPark"));
+            toggleButtons(domePark, "Parking", domeUnpark, "UnPark");
 
             if (getDomeModel()->isRolloffRoof())
                 domeAzimuthPosition->setText(i18n("CLOSING"));
@@ -249,9 +246,9 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
 
             appendLogText(i18n("Dome is parking..."));
             break;
+
         case ISD::Dome::DOME_UNPARKING:
-            domePark->setText(i18n("Park"));
-            domeUnpark->setText(i18n("UnParking"));
+            toggleButtons(domeUnpark, "UnParking", domePark, "Park");
 
             if (getDomeModel()->isRolloffRoof())
                 domeAzimuthPosition->setText(i18n("OPENING"));
@@ -260,8 +257,11 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
 
             appendLogText(i18n("Dome is unparking..."));
             break;
+
         case ISD::Dome::DOME_TRACKING:
             enableMotionControl(true);
+            buttonPressed(domeUnpark, "Tracking");
+            activateButton(domePark, "Park");
             appendLogText(i18n("Dome is tracking."));
             break;
     }
@@ -273,27 +273,23 @@ void Observatory::setShutterStatus(ISD::Dome::ShutterStatus status)
     switch (status)
     {
         case ISD::Dome::SHUTTER_OPEN:
-            shutterOpen->setChecked(true);
-            shutterClosed->setChecked(false);
-            shutterOpen->setText(i18n("Opened"));
-            shutterClosed->setText(i18n("Close"));
+            buttonPressed(shutterOpen, "Opened");
+            activateButton(shutterClosed, "Close");
             appendLogText(i18n("Shutter is open."));
             break;
+
         case ISD::Dome::SHUTTER_OPENING:
-            shutterOpen->setText(i18n("Opening"));
-            shutterClosed->setText(i18n("Closed"));
+            toggleButtons(shutterOpen, "Opening", shutterClosed, "Close");
             appendLogText(i18n("Shutter is opening..."));
             break;
+
         case ISD::Dome::SHUTTER_CLOSED:
-            shutterOpen->setChecked(false);
-            shutterClosed->setChecked(true);
-            shutterOpen->setText(i18n("Open"));
-            shutterClosed->setText(i18n("Closed"));
+            buttonPressed(shutterClosed, "Closed");
+            activateButton(shutterOpen, "Open");
             appendLogText(i18n("Shutter is closed."));
             break;
         case ISD::Dome::SHUTTER_CLOSING:
-            shutterOpen->setText(i18n("Opened"));
-            shutterClosed->setText(i18n("Closing"));
+            toggleButtons(shutterClosed, "Closing", shutterOpen, "Open");
             appendLogText(i18n("Shutter is closing..."));
             break;
         default:
@@ -470,6 +466,34 @@ void Observatory::setAlertActions(WeatherActions actions)
     weatherAlertShutterCB->setChecked(actions.closeShutter);
     weatherAlertDelaySB->setValue(actions.delay);
 }
+
+void Observatory::toggleButtons(QPushButton *buttonPressed, const char* titlePressed, QPushButton *buttonCounterpart, const char* titleCounterpart)
+{
+    buttonPressed->setEnabled(false);
+    buttonPressed->setText(i18n(titlePressed));
+
+    buttonCounterpart->setEnabled(true);
+    buttonCounterpart->setChecked(false);
+    buttonCounterpart->setCheckable(false);
+    buttonCounterpart->setText(i18n(titleCounterpart));
+}
+
+void Observatory::activateButton(QPushButton *button, const char *title)
+{
+    button->setEnabled(true);
+    button->setCheckable(false);
+    button->setText(i18n(title));
+}
+
+void Observatory::buttonPressed(QPushButton *button, const char* title)
+{
+    button->setEnabled(false);
+    button->setCheckable(true);
+    button->setChecked(true);
+    button->setText(i18n(title));
+
+}
+
 
 void Observatory::statusControlSettingsChanged()
 {

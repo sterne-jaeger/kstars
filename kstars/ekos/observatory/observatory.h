@@ -81,6 +81,11 @@ class Observatory : public QWidget, public Ui::Observatory
         void setWarningActions(WeatherActions actions);
         void setAlertActions(WeatherActions actions);
 
+        // button handling
+        void toggleButtons(QPushButton *buttonPressed, const char* titlePressed, QPushButton *buttonCounterpart, const char* titleCounterpart);
+        void activateButton(QPushButton *button, const char *title);
+        void buttonPressed(QPushButton *button, const char *title);
+
     private slots:
         // observatory status handling
         void setObseratoryStatusControl(ObservatoryStatusControl control);
