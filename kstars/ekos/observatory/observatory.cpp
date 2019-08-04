@@ -153,6 +153,7 @@ void Observatory::initDome()
             motionAbortButton->setEnabled(true);
 
             // slaving
+            showAutoSync(getDomeModel()->isAutoSync());
             connect(slavingEnableButton, &QPushButton::clicked, this, [this]()
             {
                 enableAutoSync(true);
