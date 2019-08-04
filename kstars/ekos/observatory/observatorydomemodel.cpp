@@ -20,6 +20,7 @@ void ObservatoryDomeModel::initModel(Dome *dome)
     connect(domeInterface, &Dome::ready, this, &ObservatoryDomeModel::ready);
     connect(domeInterface, &Dome::disconnected, this, &ObservatoryDomeModel::disconnected);
     connect(domeInterface, &Dome::newStatus, this, &ObservatoryDomeModel::newStatus);
+    connect(domeInterface, &Dome::newParkStatus, this, &ObservatoryDomeModel::newParkStatus);
     connect(domeInterface, &Dome::newShutterStatus, this, &ObservatoryDomeModel::newShutterStatus);
     connect(domeInterface, &Dome::azimuthPositionChanged, this, &ObservatoryDomeModel::azimuthPositionChanged);
     connect(domeInterface, &Dome::newAutoSyncStatus, this, &ObservatoryDomeModel::newAutoSyncStatus);

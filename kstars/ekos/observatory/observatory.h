@@ -108,6 +108,7 @@ class Observatory : public QWidget, public Ui::Observatory
         void shutdownDome();
 
         void setDomeStatus(ISD::Dome::Status status);
+        void setDomeParkStatus(ISD::ParkStatus status);
         void setShutterStatus(ISD::Dome::ShutterStatus status);
 };
 }

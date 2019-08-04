@@ -57,6 +57,7 @@ void Observatory::setDomeModel(ObservatoryDomeModel *model)
         connect(model, &Ekos::ObservatoryDomeModel::ready, this, &Ekos::Observatory::initDome);
         connect(model, &Ekos::ObservatoryDomeModel::disconnected, this, &Ekos::Observatory::shutdownDome);
         connect(model, &Ekos::ObservatoryDomeModel::newStatus, this, &Ekos::Observatory::setDomeStatus);
+        connect(model, &Ekos::ObservatoryDomeModel::newParkStatus, this, &Ekos::Observatory::setDomeParkStatus);
         connect(model, &Ekos::ObservatoryDomeModel::newShutterStatus, this, &Ekos::Observatory::setShutterStatus);
         connect(model, &Ekos::ObservatoryDomeModel::azimuthPositionChanged, this, &Ekos::Observatory::domeAzimuthChanged);
         connect(model, &Ekos::ObservatoryDomeModel::newAutoSyncStatus, this, &Ekos::Observatory::showAutoSync);
@@ -187,6 +188,7 @@ void Observatory::initDome()
         motionAbortButton->setEnabled(true);
         // update the dome status
         setDomeStatus(getDomeModel()->status());
+        setDomeParkStatus(getDomeModel()->parkStatus());
     }
 
 }
@@ -212,17 +214,6 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
         case ISD::Dome::DOME_ERROR:
             break;
         case ISD::Dome::DOME_IDLE:
-            if (getDomeModel()->parkStatus() == ISD::PARK_UNPARKED || getDomeModel()->parkStatus() == ISD::PARK_UNPARKING)
-            {
-                activateButton(domePark, "Park");
-                buttonPressed(domeUnpark, "Unparked");
-
-                if (getDomeModel()->isRolloffRoof())
-                    domeAzimuthPosition->setText(i18n("OPEN"));
-                else
-                    enableMotionControl(true);
-            }
-
             motionCWButton->setChecked(false);
             motionCCWButton->setChecked(false);
 
@@ -231,6 +222,7 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
 
         case ISD::Dome::DOME_MOVING_CW:
             motionCWButton->setChecked(true);
+            motionCCWButton->setEnabled(true);
             motionCCWButton->setChecked(false);
             if (getDomeModel()->isRolloffRoof())
             {
@@ -246,6 +238,7 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
 
         case ISD::Dome::DOME_MOVING_CCW:
             motionCWButton->setChecked(false);
+            motionCWButton->setEnabled(true);
             motionCCWButton->setChecked(true);
             if (getDomeModel()->isRolloffRoof())
             {
@@ -260,22 +253,14 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
         break;
 
         case ISD::Dome::DOME_PARKED:
-            buttonPressed(domePark, "Parked");
-            activateButton(domeUnpark, "Unpark");
-
-            if (getDomeModel()->isRolloffRoof())
-                domeAzimuthPosition->setText(i18n("CLOSED"));
-            else
-                enableMotionControl(false);
-
-            motionCWButton->setChecked(false);
-            motionCCWButton->setChecked(false);
+            setDomeParkStatus(ISD::PARK_PARKED);
 
             appendLogText(i18n("Dome is parked."));
             break;
 
         case ISD::Dome::DOME_PARKING:
             toggleButtons(domePark, "Parking", domeUnpark, "Unpark");
+            motionCWButton->setEnabled(true);
 
             if (getDomeModel()->isRolloffRoof())
                 domeAzimuthPosition->setText(i18n("CLOSING"));
@@ -290,6 +275,7 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
 
         case ISD::Dome::DOME_UNPARKING:
             toggleButtons(domeUnpark, "Unparking", domePark, "Park");
+            motionCCWButton->setEnabled(true);
 
             if (getDomeModel()->isRolloffRoof())
                 domeAzimuthPosition->setText(i18n("OPENING"));
@@ -306,6 +292,41 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
             enableMotionControl(true);
             appendLogText(i18n("Dome is tracking."));
             break;
+    }
+}
+
+void Observatory::setDomeParkStatus(ISD::ParkStatus status)
+{
+    switch (status)
+    {
+    case ISD::PARK_UNPARKED:
+        activateButton(domePark, "Park");
+        buttonPressed(domeUnpark, "Unparked");
+        motionCWButton->setChecked(false);
+        motionCWButton->setEnabled(false);
+        motionCCWButton->setChecked(false);
+
+        if (getDomeModel()->isRolloffRoof())
+            domeAzimuthPosition->setText(i18n("OPEN"));
+        else
+            enableMotionControl(true);
+        break;
+
+    case ISD::PARK_PARKED:
+        buttonPressed(domePark, "Parked");
+        activateButton(domeUnpark, "Unpark");
+        motionCWButton->setChecked(false);
+        motionCCWButton->setChecked(false);
+        motionCCWButton->setEnabled(false);
+
+        if (getDomeModel()->isRolloffRoof())
+            domeAzimuthPosition->setText(i18n("CLOSED"));
+        else
+            enableMotionControl(false);
+        break;
+
+    default:
+        break;
     }
 }
 

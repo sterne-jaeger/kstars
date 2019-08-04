@@ -95,6 +95,7 @@ class ObservatoryDomeModel: public QObject
 
     signals:
         void newStatus(ISD::Dome::Status state);
+        void newParkStatus(ISD::ParkStatus status);
         void newShutterStatus(ISD::Dome::ShutterStatus status);
         void newAutoSyncStatus(bool enabled);
         void azimuthPositionChanged(double position);

@@ -29,6 +29,7 @@ void ObservatoryModel::setDomeModel(ObservatoryDomeModel *model) {
     if (model != nullptr)
     {
         connect(mDomeModel, &ObservatoryDomeModel::newStatus, [this](ISD::Dome::Status s) { Q_UNUSED(s); updateStatus(); });
+        connect(mDomeModel, &ObservatoryDomeModel::newParkStatus, [this](ISD::ParkStatus s) { Q_UNUSED(s); updateStatus(); });
         connect(mDomeModel, &ObservatoryDomeModel::newShutterStatus, [this](ISD::Dome::ShutterStatus s) { Q_UNUSED(s); updateStatus(); });
         if (mWeatherModel != nullptr)
             connect(mWeatherModel, &ObservatoryWeatherModel::execute, mDomeModel, &ObservatoryDomeModel::execute);
