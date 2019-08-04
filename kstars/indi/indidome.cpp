@@ -443,6 +443,21 @@ bool Dome::setAutoSync(bool activate)
     return true;
 }
 
+bool Dome::moveDome(DomeDirection dir, DomeMotionCommand operation)
+{
+    ISwitchVectorProperty *domeMotion = baseDevice->getSwitch("DOME_MOTION");
+    if (domeMotion == nullptr)
+        return false;
+
+    ISwitch *opSwitch = IUFindSwitch(domeMotion, dir == DomeDirection::DOME_CW ? "DOME_CW": "DOME_CCW");
+    IUResetSwitch(domeMotion);
+    opSwitch->s = (operation == DomeMotionCommand::MOTION_START ? ISS_ON : ISS_OFF);
+
+    clientManager->sendNewSwitch(domeMotion);
+
+    return true;
+}
+
 bool Dome::ControlShutter(bool open)
 {
     ISwitchVectorProperty *shutterSP = baseDevice->getSwitch("DOME_SHUTTER");

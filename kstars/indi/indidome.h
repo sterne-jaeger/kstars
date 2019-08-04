@@ -50,6 +50,19 @@ public:
         SHUTTER_ERROR
     } ShutterStatus;
 
+    typedef enum
+    {
+        DOME_CW,
+        DOME_CCW
+    } DomeDirection;
+
+    typedef enum
+    {
+        MOTION_START,
+        MOTION_STOP
+    } DomeMotionCommand;
+
+
         void processSwitch(ISwitchVectorProperty *svp) override;
         void processText(ITextVectorProperty *tvp) override;
         void processNumber(INumberVectorProperty *nvp) override;
@@ -87,6 +100,7 @@ public:
         bool setAzimuthPosition(double position);
         bool setRelativePosition(double position);
 
+        bool moveDome(DomeDirection dir, DomeMotionCommand operation);
 
         bool hasShutter() const
         {

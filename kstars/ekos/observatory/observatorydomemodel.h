@@ -84,6 +84,8 @@ class ObservatoryDomeModel: public QObject
         void openShutter();
         void closeShutter();
 
+        bool moveDome(bool moveCW, bool start);
+
     public slots:
         void execute(WeatherActions actions);
 

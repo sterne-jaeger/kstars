@@ -115,6 +115,15 @@ void ObservatoryDomeModel::closeShutter()
     domeInterface->controlShutter(false);
 }
 
+bool ObservatoryDomeModel::moveDome(bool moveCW, bool start)
+{
+    if (domeInterface == nullptr)
+        return false;
+
+    emit newLog(i18n("%2 dome motion %1...", moveCW ? "clockwise" : "counter clockwise", start ? "Starting" : "Stopping"));
+    return domeInterface->moveDome(moveCW, start);
+}
+
 void ObservatoryDomeModel::execute(WeatherActions actions)
 {
     if (hasShutter() && actions.closeShutter)

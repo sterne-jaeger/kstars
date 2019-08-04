@@ -123,6 +123,10 @@ void Observatory::initDome()
     {
         connect(getDomeModel(), &Ekos::ObservatoryDomeModel::newLog, this, &Ekos::Observatory::appendLogText);
 
+        // dome motion buttons
+        connect(motionCWButton, &QPushButton::clicked, [=](bool checked) {getDomeModel()->moveDome(true, checked);});
+        connect(motionCCWButton, &QPushButton::clicked, [=](bool checked) {getDomeModel()->moveDome(false, checked);});
+
         if (getDomeModel()->canPark())
         {
             connect(domePark, &QPushButton::clicked, getDomeModel(), &Ekos::ObservatoryDomeModel::park);
@@ -140,16 +144,12 @@ void Observatory::initDome()
         {
             SlavingBox->setVisible(false);
             domeAzimuthPosition->setText("N/A");
-            // not available yet
-            enableMotionControl(false);
-
+            enableMotionControl(true);
         }
         else
         {
             // initialize the dome motion controls
             domeAzimuthChanged(getDomeModel()->azimuthPosition());
-
-            motionAbortButton->setEnabled(true);
 
             // slaving
             showAutoSync(getDomeModel()->isAutoSync());
@@ -183,6 +183,9 @@ void Observatory::initDome()
             useShutterCB->setVisible(false);
         }
 
+        // abort button should always be available
+        motionAbortButton->setEnabled(true);
+        // update the dome status
         setDomeStatus(getDomeModel()->status());
     }
 
@@ -209,7 +212,7 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
         case ISD::Dome::DOME_ERROR:
             break;
         case ISD::Dome::DOME_IDLE:
-            if (getDomeModel()->parkStatus() == ISD::PARK_UNPARKED)
+            if (getDomeModel()->parkStatus() == ISD::PARK_UNPARKED || getDomeModel()->parkStatus() == ISD::PARK_UNPARKING)
             {
                 activateButton(domePark, "Park");
                 buttonPressed(domeUnpark, "Unparked");
@@ -220,10 +223,15 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
                     enableMotionControl(true);
             }
 
+            motionCWButton->setChecked(false);
+            motionCCWButton->setChecked(false);
+
             appendLogText(i18n("Dome is idle."));
             break;
 
         case ISD::Dome::DOME_MOVING_CW:
+            motionCWButton->setChecked(true);
+            motionCCWButton->setChecked(false);
             if (getDomeModel()->isRolloffRoof())
             {
                 domeAzimuthPosition->setText(i18n("OPENING"));
@@ -232,12 +240,13 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
             }
             else
             {
-                enableMotionControl(false);
                 appendLogText(i18n("Dome is moving clockwise..."));
             }
             break;
 
         case ISD::Dome::DOME_MOVING_CCW:
+            motionCWButton->setChecked(false);
+            motionCCWButton->setChecked(true);
             if (getDomeModel()->isRolloffRoof())
             {
                 domeAzimuthPosition->setText(i18n("CLOSING"));
@@ -246,7 +255,6 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
             }
             else
             {
-                enableMotionControl(false);
                 appendLogText(i18n("Dome is moving counter clockwise..."));
             }
         break;
@@ -260,6 +268,9 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
             else
                 enableMotionControl(false);
 
+            motionCWButton->setChecked(false);
+            motionCCWButton->setChecked(false);
+
             appendLogText(i18n("Dome is parked."));
             break;
 
@@ -271,6 +282,9 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
             else
                 enableMotionControl(false);
 
+            motionCWButton->setChecked(false);
+            motionCCWButton->setChecked(true);
+
             appendLogText(i18n("Dome is parking..."));
             break;
 
@@ -281,6 +295,9 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
                 domeAzimuthPosition->setText(i18n("OPENING"));
             else
                 enableMotionControl(false);
+
+            motionCWButton->setChecked(true);
+            motionCCWButton->setChecked(false);
 
             appendLogText(i18n("Dome is unparking..."));
             break;
@@ -351,19 +368,6 @@ void Observatory::enableMotionControl(bool enabled)
 {
     MotionBox->setEnabled(enabled);
 
-    // special case for rolloff roofs
-    if (getDomeModel()->isRolloffRoof())
-    {
-        motionCWButton->setText(i18n("Open"));
-        motionCCWButton->setText(i18n("Close"));
-        motionCWButton->setEnabled(enabled);
-        motionCCWButton->setEnabled(enabled);
-        motionMoveAbsButton->setVisible(false);
-        motionMoveRelButton->setVisible(false);
-        absoluteMotionSB->setVisible(false);
-        relativeMotionSB->setVisible(false);
-    }
-
     // absolute motion controls
     if (getDomeModel()->canAbsoluteMove())
     {
@@ -381,14 +385,29 @@ void Observatory::enableMotionControl(bool enabled)
     {
         motionMoveRelButton->setEnabled(enabled);
         relativeMotionSB->setEnabled(enabled);
+        motionCWButton->setEnabled(enabled);
+        motionCCWButton->setEnabled(enabled);
     }
     else
     {
         motionMoveRelButton->setEnabled(false);
         relativeMotionSB->setEnabled(false);
+        motionCWButton->setEnabled(false);
+        motionCCWButton->setEnabled(false);
     }
 
-
+    // special case for rolloff roofs
+    if (getDomeModel()->isRolloffRoof())
+    {
+        motionCWButton->setText(i18n("Open"));
+        motionCCWButton->setText(i18n("Close"));
+        motionCWButton->setEnabled(enabled);
+        motionCCWButton->setEnabled(enabled);
+        motionMoveAbsButton->setVisible(false);
+        motionMoveRelButton->setVisible(false);
+        absoluteMotionSB->setVisible(false);
+        relativeMotionSB->setVisible(false);
+    }
 }
 
 void Observatory::enableAutoSync(bool enabled)

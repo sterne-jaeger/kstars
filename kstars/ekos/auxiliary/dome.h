@@ -99,6 +99,9 @@ class Dome : public QObject
         Q_SCRIPTABLE void setAzimuthPosition(double position);
         Q_SCRIPTABLE void setRelativePosition(double position);
 
+        Q_SCRIPTABLE bool moveDome(bool moveCW, bool start);
+
+
         Q_SCRIPTABLE bool isAutoSync();
         Q_SCRIPTABLE bool setAutoSync(bool activate);
 

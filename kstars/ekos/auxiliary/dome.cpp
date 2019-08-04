@@ -139,6 +139,15 @@ void Dome::setRelativePosition(double position)
         currentDome->setRelativePosition(position);
 }
 
+bool Dome::moveDome(bool moveCW, bool start)
+{
+    if (currentDome == nullptr)
+        return false;
+
+    return currentDome->moveDome(moveCW ? ISD::Dome::DOME_CW : ISD::Dome::DOME_CCW,
+                                 start  ? ISD::Dome::MOTION_START : ISD::Dome::MOTION_STOP);
+}
+
 bool Dome::isAutoSync()
 {
     if (currentDome)
