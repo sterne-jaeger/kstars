@@ -149,6 +149,7 @@ class Dome : public QObject
         ISD::Dome *currentDome { nullptr };
         ISD::ParkStatus m_ParkStatus { ISD::PARK_UNKNOWN };
         ISD::Dome::ShutterStatus m_ShutterStatus { ISD::Dome::SHUTTER_UNKNOWN };
+        void setStatus(ISD::Dome::Status status);
 };
 
 }

@@ -61,6 +61,23 @@ void ObservatoryDomeModel::unpark()
     domeInterface->unpark();
 }
 
+ISD::ParkStatus ObservatoryDomeModel::parkStatus()
+{
+    if (domeInterface == nullptr)
+        return ISD::PARK_UNKNOWN;
+    else if (isRolloffRoof())
+    {
+        // we need to override the parking status of the dome interface for opening and closing rolloff roofs
+        if (domeInterface->status() == ISD::Dome::DOME_MOVING_CW)
+            return ISD::PARK_UNPARKING;
+        else if (domeInterface->status() == ISD::Dome::DOME_MOVING_CCW)
+            return ISD::PARK_PARKING;
+    }
+
+    // in all other cases use the underlying park status
+    return domeInterface->parkStatus();
+}
+
 void ObservatoryDomeModel::setAutoSync(bool activate)
 {
     if (domeInterface == nullptr)

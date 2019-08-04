@@ -37,6 +37,7 @@ void Dome::setDome(ISD::GDInterface *newDome)
     currentDome->disconnect(this);
 
     connect(currentDome, &ISD::Dome::newStatus, this, &Dome::newStatus);
+    connect(currentDome, &ISD::Dome::newStatus, this, &Dome::setStatus);
     connect(currentDome, &ISD::Dome::newParkStatus, this, &Dome::newParkStatus);
     connect(currentDome, &ISD::Dome::newParkStatus, [&](ISD::ParkStatus status)
     {
@@ -53,22 +54,6 @@ void Dome::setDome(ISD::GDInterface *newDome)
     connect(currentDome, &ISD::Dome::Disconnected, this, &Dome::disconnected);
 }
 
-//void Dome::setTelescope(ISD::GDInterface *newTelescope)
-//{
-//    if (currentDome == nullptr)
-//        return;
-
-//    ITextVectorProperty *activeDevices = currentDome->getBaseDevice()->getText("ACTIVE_DEVICES");
-//    if (activeDevices)
-//    {
-//        IText *activeTelescope = IUFindText(activeDevices, "ACTIVE_TELESCOPE");
-//        if (activeTelescope)
-//        {
-//            IUSaveText(activeTelescope, newTelescope->getDeviceName());
-//            currentDome->getDriverInfo()->getClientManager()->sendNewText(activeDevices);
-//        }
-//    }
-//}
 
 bool Dome::canPark()
 {
@@ -187,42 +172,6 @@ bool Dome::controlShutter(bool open)
     return false;
 }
 
-#if 0
-Dome::ParkingStatus Dome::getParkingStatus()
-{
-    if (currentDome == nullptr || currentDome->canPark() == false)
-        return PARKING_ERROR;
-
-    ISwitchVectorProperty *parkSP = currentDome->getBaseDevice()->getSwitch("DOME_PARK");
-
-    if (parkSP == nullptr)
-        return PARKING_ERROR;
-
-    switch (parkSP->s)
-    {
-        case IPS_IDLE:
-            return PARKING_IDLE;
-
-        case IPS_OK:
-            if (parkSP->sp[0].s == ISS_ON)
-                return PARKING_OK;
-            else
-                return UNPARKING_OK;
-
-        case IPS_BUSY:
-            if (parkSP->sp[0].s == ISS_ON)
-                return PARKING_BUSY;
-            else
-                return UNPARKING_BUSY;
-
-        case IPS_ALERT:
-            return PARKING_ERROR;
-    }
-
-    return PARKING_ERROR;
-}
-#endif
-
 void Dome::removeDevice(ISD::GDInterface *device)
 {
     device->disconnect(this);
@@ -230,6 +179,27 @@ void Dome::removeDevice(ISD::GDInterface *device)
     {
         currentDome = nullptr;
     }
+}
+
+void Dome::setStatus(ISD::Dome::Status status)
+{
+    // special case for rolloff roofs.
+    if (isRolloffRoof())
+    {
+        // if a parked rollof roof starts to move, its state changes to unparking
+        if (status == ISD::Dome::DOME_MOVING_CW && (m_ParkStatus == ISD::PARK_PARKED || m_ParkStatus == ISD::PARK_PARKING))
+        {
+            m_ParkStatus = ISD::PARK_UNPARKING;
+            emit newParkStatus(m_ParkStatus);
+        }
+        // if a unparked rollof roof starts to move, its state changes to parking
+        else if (status == ISD::Dome::DOME_MOVING_CCW && (m_ParkStatus == ISD::PARK_UNPARKED || m_ParkStatus == ISD::PARK_UNPARKING))
+        {
+            m_ParkStatus = ISD::PARK_PARKING;
+            emit newParkStatus(m_ParkStatus);
+        }
+    }
+    // in all other cases, do nothing
 }
 
 }

@@ -219,12 +219,12 @@ void Dome::processSwitch(ISwitchVectorProperty *svp)
     {
         Status lastStatus = m_Status;
 
-        if (svp->s == IPS_BUSY && lastStatus != DOME_MOVING && lastStatus != DOME_PARKING && lastStatus != DOME_UNPARKING)
+        if (svp->s == IPS_BUSY && lastStatus != DOME_MOVING_CW && lastStatus != DOME_MOVING_CCW && lastStatus != DOME_PARKING && lastStatus != DOME_UNPARKING)
         {
-            m_Status = DOME_MOVING;
+            m_Status = svp->sp->s == ISS_ON ? DOME_MOVING_CW : DOME_MOVING_CCW;
             emit newStatus(m_Status);
         }
-        else if (svp->s == IPS_OK && lastStatus == DOME_MOVING)
+        else if (svp->s == IPS_OK && (lastStatus == DOME_MOVING_CW || lastStatus == DOME_MOVING_CCW))
         {
             m_Status = DOME_TRACKING;
             emit newStatus(m_Status);
@@ -506,8 +506,11 @@ const QString Dome::getStatusString(Dome::Status status)
         case ISD::Dome::DOME_UNPARKING:
             return i18n("UnParking");
 
-        case ISD::Dome::DOME_MOVING:
-            return i18n("Moving");
+        case ISD::Dome::DOME_MOVING_CW:
+            return i18n("Moving clockwise");
+
+        case ISD::Dome::DOME_MOVING_CCW:
+            return i18n("Moving counter clockwise");
 
         case ISD::Dome::DOME_TRACKING:
             return i18n("Tracking");

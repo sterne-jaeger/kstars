@@ -37,6 +37,7 @@ class ObservatoryDomeModel: public QObject
         }
         void park();
         void unpark();
+        ISD::ParkStatus parkStatus();
 
         double azimuthPosition()
         {

@@ -36,8 +36,6 @@ Observatory::Observatory()
     // make invisible, since not implemented yet
     weatherWarningSchedulerCB->setVisible(false);
     weatherAlertSchedulerCB->setVisible(false);
-    motionCWButton->setVisible(false);
-    motionCCWButton->setVisible(false);
 }
 
 void Observatory::setObseratoryStatusControl(ObservatoryStatusControl control)
@@ -140,15 +138,16 @@ void Observatory::initDome()
 
         if (getDomeModel()->isRolloffRoof())
         {
-            MotionBox->setVisible(false);
             SlavingBox->setVisible(false);
             domeAzimuthPosition->setText("N/A");
+            // not available yet
+            enableMotionControl(false);
+
         }
         else
         {
             // initialize the dome motion controls
             domeAzimuthChanged(getDomeModel()->azimuthPosition());
-
 
             motionAbortButton->setEnabled(true);
 
@@ -210,24 +209,51 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
         case ISD::Dome::DOME_ERROR:
             break;
         case ISD::Dome::DOME_IDLE:
-            activateButton(domePark, "Park");
-            buttonPressed(domeUnpark, "UnParked");
+            if (getDomeModel()->parkStatus() == ISD::PARK_UNPARKED)
+            {
+                activateButton(domePark, "Park");
+                buttonPressed(domeUnpark, "Unparked");
 
-            if (getDomeModel()->isRolloffRoof())
-                domeAzimuthPosition->setText(i18n("OPEN"));
-            else
-                enableMotionControl(true);
+                if (getDomeModel()->isRolloffRoof())
+                    domeAzimuthPosition->setText(i18n("OPEN"));
+                else
+                    enableMotionControl(true);
+            }
 
             appendLogText(i18n("Dome is idle."));
             break;
 
-        case ISD::Dome::DOME_MOVING:
-            enableMotionControl(false);
-            appendLogText(i18n("Dome is moving..."));
+        case ISD::Dome::DOME_MOVING_CW:
+            if (getDomeModel()->isRolloffRoof())
+            {
+                domeAzimuthPosition->setText(i18n("OPENING"));
+                toggleButtons(domeUnpark, "Unparking", domePark, "Park");
+                appendLogText(i18n("Dome is opening..."));
+            }
+            else
+            {
+                enableMotionControl(false);
+                appendLogText(i18n("Dome is moving clockwise..."));
+            }
             break;
+
+        case ISD::Dome::DOME_MOVING_CCW:
+            if (getDomeModel()->isRolloffRoof())
+            {
+                domeAzimuthPosition->setText(i18n("CLOSING"));
+                toggleButtons(domePark, "Parking", domeUnpark, "Unpark");
+                appendLogText(i18n("Dome is closing..."));
+            }
+            else
+            {
+                enableMotionControl(false);
+                appendLogText(i18n("Dome is moving counter clockwise..."));
+            }
+        break;
+
         case ISD::Dome::DOME_PARKED:
             buttonPressed(domePark, "Parked");
-            activateButton(domeUnpark, "UnPark");
+            activateButton(domeUnpark, "Unpark");
 
             if (getDomeModel()->isRolloffRoof())
                 domeAzimuthPosition->setText(i18n("CLOSED"));
@@ -238,7 +264,7 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
             break;
 
         case ISD::Dome::DOME_PARKING:
-            toggleButtons(domePark, "Parking", domeUnpark, "UnPark");
+            toggleButtons(domePark, "Parking", domeUnpark, "Unpark");
 
             if (getDomeModel()->isRolloffRoof())
                 domeAzimuthPosition->setText(i18n("CLOSING"));
@@ -249,7 +275,7 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
             break;
 
         case ISD::Dome::DOME_UNPARKING:
-            toggleButtons(domeUnpark, "UnParking", domePark, "Park");
+            toggleButtons(domeUnpark, "Unparking", domePark, "Park");
 
             if (getDomeModel()->isRolloffRoof())
                 domeAzimuthPosition->setText(i18n("OPENING"));
@@ -261,8 +287,6 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
 
         case ISD::Dome::DOME_TRACKING:
             enableMotionControl(true);
-            buttonPressed(domeUnpark, "Tracking");
-            activateButton(domePark, "Park");
             appendLogText(i18n("Dome is tracking."));
             break;
     }
@@ -326,6 +350,19 @@ void Observatory::setWeatherModel(ObservatoryWeatherModel *model)
 void Observatory::enableMotionControl(bool enabled)
 {
     MotionBox->setEnabled(enabled);
+
+    // special case for rolloff roofs
+    if (getDomeModel()->isRolloffRoof())
+    {
+        motionCWButton->setText(i18n("Open"));
+        motionCCWButton->setText(i18n("Close"));
+        motionCWButton->setEnabled(enabled);
+        motionCCWButton->setEnabled(enabled);
+        motionMoveAbsButton->setVisible(false);
+        motionMoveRelButton->setVisible(false);
+        absoluteMotionSB->setVisible(false);
+        relativeMotionSB->setVisible(false);
+    }
 
     // absolute motion controls
     if (getDomeModel()->canAbsoluteMove())

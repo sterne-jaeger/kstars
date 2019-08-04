@@ -73,9 +73,7 @@ void ObservatoryModel::setStatusControl(ObservatoryStatusControl control)
 bool ObservatoryModel::isReady()
 {
     // dome relevant for the status and dome is ready
-    if (mStatusControl.useDome && (getDomeModel() == nullptr ||
-                                   (getDomeModel()->status() != ISD::Dome::DOME_IDLE &&
-                                    getDomeModel()->status() != ISD::Dome::DOME_TRACKING)))
+    if (mStatusControl.useDome && (getDomeModel() == nullptr || getDomeModel()->parkStatus() != ISD::PARK_UNPARKED))
         return false;
 
     // shutter relevant for the status and shutter open
