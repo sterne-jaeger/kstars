@@ -223,6 +223,13 @@ void Dome::processSwitch(ISwitchVectorProperty *svp)
         {
             m_Status = svp->sp->s == ISS_ON ? DOME_MOVING_CW : DOME_MOVING_CCW;
             emit newStatus(m_Status);
+
+            // rolloff roofs: cw = opening = unparking, ccw = closing = parking
+            if (!canAbsMove() && !canRelMove())
+            {
+                m_ParkStatus = m_Status == DOME_MOVING_CW ? PARK_UNPARKING : PARK_PARKING;
+                emit newParkStatus(m_ParkStatus);
+            }
         }
         else if (svp->s == IPS_OK && (lastStatus == DOME_MOVING_CW || lastStatus == DOME_MOVING_CCW))
         {

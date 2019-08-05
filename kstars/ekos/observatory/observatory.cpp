@@ -217,7 +217,9 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
             break;
         case ISD::Dome::DOME_IDLE:
             motionCWButton->setChecked(false);
+            motionCWButton->setEnabled(true);
             motionCCWButton->setChecked(false);
+            motionCCWButton->setEnabled(true);
 
             appendLogText(i18n("Dome is idle."));
             break;
@@ -292,6 +294,8 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
 
         case ISD::Dome::DOME_TRACKING:
             enableMotionControl(true);
+            motionCWButton->setEnabled(true);
+            motionCCWButton->setChecked(true);
             appendLogText(i18n("Dome is tracking."));
             break;
     }
