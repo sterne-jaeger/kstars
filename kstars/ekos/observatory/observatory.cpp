@@ -209,6 +209,8 @@ void Observatory::shutdownDome()
 
 void Observatory::setDomeStatus(ISD::Dome::Status status)
 {
+    qCDebug(KSTARS_EKOS_OBSERVATORY) << "Setting dome status to " << status;
+
     switch (status)
     {
         case ISD::Dome::DOME_ERROR:
@@ -297,6 +299,7 @@ void Observatory::setDomeStatus(ISD::Dome::Status status)
 
 void Observatory::setDomeParkStatus(ISD::ParkStatus status)
 {
+    qCDebug(KSTARS_EKOS_OBSERVATORY) << "Setting dome park status to " << status;
     switch (status)
     {
     case ISD::PARK_UNPARKED:
@@ -333,6 +336,8 @@ void Observatory::setDomeParkStatus(ISD::ParkStatus status)
 
 void Observatory::setShutterStatus(ISD::Dome::ShutterStatus status)
 {
+    qCDebug(KSTARS_EKOS_OBSERVATORY) << "Setting shutter status to " << status;
+
     switch (status)
     {
         case ISD::Dome::SHUTTER_OPEN:
