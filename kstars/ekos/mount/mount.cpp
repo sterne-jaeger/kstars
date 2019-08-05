@@ -963,6 +963,13 @@ bool Mount::checkMeridianFlip(dms lst)
 
 
     double deltaHA = meridianFlipTimeBox->value() - lst.Hours() + telescopeCoord.ra().Hours();
+
+    // ensure -12 < HA <= 12
+    if (deltaHA <= -12.0)
+        deltaHA += 24.0;
+    else if (deltaHA > 12)
+        deltaHA -= 24;
+
     int hh = static_cast<int> (deltaHA);
     int mm = static_cast<int> ((deltaHA - hh) * 60);
     int ss = static_cast<int> ((deltaHA - hh - mm / 60.0) * 3600);
