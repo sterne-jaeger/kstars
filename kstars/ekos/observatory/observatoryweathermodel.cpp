@@ -37,9 +37,9 @@ void ObservatoryWeatherModel::initModel(Weather *weather)
     alertActions.stopScheduler = Options::weatherAlertStopScheduler();
     alertActions.delay = Options::weatherAlertDelay();
 
-    warningTimer.setInterval(warningActions.delay * 1000);
+    warningTimer.setInterval(static_cast<int>(warningActions.delay * 1000));
     warningTimer.setSingleShot(true);
-    alertTimer.setInterval(alertActions.delay * 1000);
+    alertTimer.setInterval(static_cast<int>(alertActions.delay * 1000));
     alertTimer.setSingleShot(true);
 
     connect(&warningTimer, &QTimer::timeout, [this]()
@@ -95,7 +95,7 @@ void ObservatoryWeatherModel::setWarningActions(WeatherActions actions)
     Options::setWeatherWarningCloseDome(actions.parkDome);
     Options::setWeatherWarningCloseShutter(actions.closeShutter);
     Options::setWeatherWarningDelay(actions.delay);
-    warningTimer.setInterval(actions.delay * 1000);
+    warningTimer.setInterval(static_cast<int>(actions.delay * 1000));
 }
 
 
@@ -116,7 +116,7 @@ void ObservatoryWeatherModel::setAlertActions(WeatherActions actions)
     Options::setWeatherAlertCloseDome(actions.parkDome);
     Options::setWeatherAlertCloseShutter(actions.closeShutter);
     Options::setWeatherAlertDelay(actions.delay);
-    alertTimer.setInterval(actions.delay * 1000);
+    alertTimer.setInterval(static_cast<int>(actions.delay * 1000));
 }
 
 QString ObservatoryWeatherModel::getAlertActionsStatus()
