@@ -899,7 +899,7 @@ font-weight:bold;
                 <item>
                  <widget class="QLabel" name="weatherWarningDelayLabel">
                   <property name="text">
-                   <string>Delay (se&amp;c):</string>
+                   <string>Delay (sec):</string>
                   </property>
                  </widget>
                 </item>
@@ -991,7 +991,7 @@ font-weight:bold;
                 <item>
                  <widget class="QLabel" name="weatherAlertDelayLabel">
                   <property name="text">
-                   <string>De&amp;lay (sec):</string>
+                   <string>Delay (sec):</string>
                   </property>
                  </widget>
                 </item>
