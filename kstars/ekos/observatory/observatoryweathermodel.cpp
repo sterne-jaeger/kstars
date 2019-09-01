@@ -23,6 +23,7 @@ void ObservatoryWeatherModel::initModel(Weather *weather)
 
     connect(weatherInterface, &Weather::ready, this, &ObservatoryWeatherModel::updateWeatherStatus);
     connect(weatherInterface, &Weather::newStatus, this, &ObservatoryWeatherModel::weatherChanged);
+    connect(weatherInterface, &Weather::newWeatherData, this, &ObservatoryWeatherModel::updateWeatherData);
     connect(weatherInterface, &Weather::disconnected, this, &ObservatoryWeatherModel::disconnected);
 
     // read the default values
@@ -161,4 +162,32 @@ void ObservatoryWeatherModel::weatherChanged(ISD::Weather::Status status)
     emit newStatus(status);
 }
 
+void ObservatoryWeatherModel::updateWeatherData(std::vector<ISD::Weather::WeatherData> entries)
+{
+    // add or update all received values
+    for (std::vector<ISD::Weather::WeatherData>::iterator entry = entries.begin(); entry != entries.end(); ++entry)
+    {
+        // update if already existing
+        unsigned long pos = findWeatherData(entry->name);
+        if (pos < m_WeatherData.size())
+            m_WeatherData[pos].value = entry->value;
+        // new weather sensor?
+        else if (entry->name.startsWith("WEATHER_"))
+            m_WeatherData.push_back({QString(entry->name), QString(entry->label), entry->value});
+    }
+    // update UI
+    emit newStatus(status());
+}
+
+unsigned long ObservatoryWeatherModel::findWeatherData(const QString name)
+{
+    unsigned long i;
+    for (i = 0; i < m_WeatherData.size(); i++)
+    {
+        if (m_WeatherData[i].name.compare(name) == 0)
+            return i;
+    }
+    // none found
+    return i;
+}
 } // Ekos

@@ -57,7 +57,7 @@ void Weather::processNumber(INumberVectorProperty *nvp)
     for (int i = 0; i < nvp->nnp; i++)
     {
         INumber number = nvp->np[i];
-        entries.push_back({QString(number.name), number.value});
+        entries.push_back({QString(number.name), QString(number.label), number.value});
     }
     emit newWeatherData(entries);
 

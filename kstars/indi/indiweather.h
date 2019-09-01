@@ -37,7 +37,7 @@ class Weather : public DeviceDecorator
             WEATHER_ALERT,
         } Status;
 
-        typedef struct { QString name; double value; } WeatherData;
+        typedef struct { QString name; QString label; double value; } WeatherData;
 
         void registerProperty(INDI::Property *prop) override;
         void processSwitch(ISwitchVectorProperty *svp) override;
