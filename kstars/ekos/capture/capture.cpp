@@ -1366,13 +1366,10 @@ void Capture::syncFilterInfo()
 
 bool Capture::startNextExposure()
 {
-    if (m_State == CAPTURE_PAUSE_PLANNED)
+    // check if pausing has been requested
+    if (checkPausing() == true)
     {
         pauseFunction = &Capture::startNextExposure;
-        appendLogText(i18n("Sequence paused."));
-        secondsLabel->setText(i18n("Paused..."));
-        m_State = CAPTURE_PAUSED;
-        setMeridianFlipStage(MF_READY);
         return false;
     }
 
@@ -1519,15 +1516,10 @@ bool Capture::setCaptureComplete()
         return true;
     }
 
-    if (m_State == CAPTURE_PAUSE_PLANNED)
+    // check if pausing has been requested
+    if (checkPausing() == true)
     {
         pauseFunction = &Capture::setCaptureComplete;
-        appendLogText(i18n("Sequence paused."));
-        secondsLabel->setText(i18n("Paused..."));
-        m_State = CAPTURE_PAUSED;
-        // handle a requested meridian flip
-        if (meridianFlipStage != MF_NONE)
-            setMeridianFlipStage(MF_READY);
         return false;
     }
 
@@ -4595,6 +4587,23 @@ void Capture::checkGuidingAfterFlip()
         setMeridianFlipStage(MF_GUIDING);
         emit meridianFlipCompleted();
     }
+}
+
+bool Capture::checkPausing()
+{
+    if (m_State == CAPTURE_PAUSE_PLANNED)
+    {
+        appendLogText(i18n("Sequence paused."));
+        secondsLabel->setText(i18n("Paused..."));
+        m_State = CAPTURE_PAUSED;
+        // handle a requested meridian flip
+        if (meridianFlipStage != MF_NONE)
+            setMeridianFlipStage(MF_READY);
+        // pause
+        return true;
+    }
+    // no pause
+    return false;
 }
 
 
