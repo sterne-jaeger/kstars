@@ -420,6 +420,15 @@ void Capture::addFilter(ISD::GDInterface * newFilter)
 
 void Capture::pause()
 {
+    if (m_State != CAPTURE_CAPTURING)
+    {
+        // Ensure that the pause function is only called during frame capturing
+        // Handling it this way is by far easier than trying to enable/disable the pause button
+        // Fixme: make pausing possible at all stages. This makes it necessary to separate the pausing states from CaptureState.
+        appendLogText(i18n("Pausing only possible while frame capture is running."));
+        qCInfo(KSTARS_EKOS_CAPTURE) << "Pause button pressed while not capturing.";
+        return;
+    }
     pauseFunction = nullptr;
     m_State         = CAPTURE_PAUSE_PLANNED;
     emit newStatus(Ekos::CAPTURE_PAUSE_PLANNED);
