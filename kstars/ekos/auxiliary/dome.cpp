@@ -145,7 +145,10 @@ bool Dome::moveDome(bool moveCW, bool start)
     if (currentDome == nullptr)
         return false;
 
-    qCDebug(KSTARS_EKOS) << "Moving dome..." << (moveCW ? "" : "counter") << "clockwise " << (start ? "started." : "stopped.");
+    if (isRolloffRoof())
+        qCDebug(KSTARS_EKOS) << (moveCW ? "Opening" : "Closing") << "rolloff roof" << (start ? "started." : "stopped.");
+    else
+        qCDebug(KSTARS_EKOS) << "Moving dome" << (moveCW ? "" : "counter") << "clockwise" << (start ? "started." : "stopped.");
     return currentDome->moveDome(moveCW ? ISD::Dome::DOME_CW : ISD::Dome::DOME_CCW,
                                  start  ? ISD::Dome::MOTION_START : ISD::Dome::MOTION_STOP);
 }
@@ -216,7 +219,7 @@ void Dome::setStatus(ISD::Dome::Status status)
         }
         else
         {
-            qCDebug(KSTARS_EKOS) << "Rolloff roof status = " << status << ").";
+            qCDebug(KSTARS_EKOS) << "Rolloff roof status = " << status << ".";
         }
     }
     // in all other cases, do nothing
