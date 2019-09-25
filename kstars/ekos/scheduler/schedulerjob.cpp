@@ -169,8 +169,8 @@ void SchedulerJob::setState(const JOBStatus &value)
     if (JOB_ERROR == state)
         KNotification::event(QLatin1String("EkosSchedulerJobFail"), i18n("Ekos job failed (%1)", getName()));
 
-    /* If job becomes invalid, automatically reset its startup characteristics, and force its duration to be reestimated */
-    if (JOB_INVALID == value)
+    /* If job becomes invalid or idle, automatically reset its startup characteristics, and force its duration to be reestimated */
+    if (JOB_INVALID == value || JOB_IDLE == value)
     {
         setStartupCondition(fileStartupCondition);
         setStartupTime(fileStartupTime);

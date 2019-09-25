@@ -1566,7 +1566,7 @@ void Scheduler::evaluateJobs()
                 /* Job is complete if its fixed completion time is passed */
                 if (job->getCompletionTime().isValid() && job->getCompletionTime() < now)
                 {
-                    job->setState(SchedulerJob::JOB_COMPLETE);
+                    job->setState(SchedulerJob::JOB_IDLE);
                     continue;
                 }
                 break;
@@ -3285,11 +3285,11 @@ void Scheduler::checkJobStage()
             if (isMountParked() == false)
             {
                 appendLogText(i18n("Job '%1' current altitude (%2 degrees) crossed minimum constraint altitude (%3 degrees), "
-                                   "marking aborted.", currentJob->getName(),
+                                   "marking idle.", currentJob->getName(),
                                    QString("%L1").arg(p.alt().Degrees(), 0, 'f', minAltitude->decimals()),
                                    QString("%L1").arg(currentJob->getMinAltitude(), 0, 'f', minAltitude->decimals())));
 
-                currentJob->setState(SchedulerJob::JOB_COMPLETE);
+                currentJob->setState(SchedulerJob::JOB_IDLE);
                 stopCurrentJobAction();
                 findNextJob();
                 return;
@@ -3311,10 +3311,10 @@ void Scheduler::checkJobStage()
             if (isMountParked() == false)
             {
                 appendLogText(i18n("Job '%2' current moon separation (%1 degrees) is lower than minimum constraint (%3 "
-                                   "degrees), marking aborted.",
+                                   "degrees), marking idle.",
                                    moonSeparation, currentJob->getName(), currentJob->getMinMoonSeparation()));
 
-                currentJob->setState(SchedulerJob::JOB_COMPLETE);
+                currentJob->setState(SchedulerJob::JOB_IDLE);
                 stopCurrentJobAction();
                 findNextJob();
                 return;
@@ -3330,9 +3330,9 @@ void Scheduler::checkJobStage()
         {
             // Minute is a DOUBLE value, do not use i18np
             appendLogText(i18n(
-                              "Job '%3' is now approaching astronomical twilight rise limit at %1 (%2 minutes safety margin), marking aborted.",
+                              "Job '%3' is now approaching astronomical twilight rise limit at %1 (%2 minutes safety margin), marking idle.",
                               preDawnDateTime.toString(), Options::preDawnTime(), currentJob->getName()));
-            currentJob->setState(SchedulerJob::JOB_COMPLETE);
+            currentJob->setState(SchedulerJob::JOB_IDLE);
             stopCurrentJobAction();
             findNextJob();
             return;
@@ -4534,8 +4534,9 @@ void Scheduler::findNextJob()
 
     Q_ASSERT_X(currentJob->getState() == SchedulerJob::JOB_ERROR ||
                currentJob->getState() == SchedulerJob::JOB_ABORTED ||
-               currentJob->getState() == SchedulerJob::JOB_COMPLETE,
-               __FUNCTION__, "Finding next job requires current to be in error, aborted or complete");
+               currentJob->getState() == SchedulerJob::JOB_COMPLETE ||
+               currentJob->getState() == SchedulerJob::JOB_IDLE,
+               __FUNCTION__, "Finding next job requires current to be in error, aborted, idle or complete");
 
     jobTimer.stop();
 
@@ -4578,6 +4579,12 @@ void Scheduler::findNextJob()
         }
 
         // otherwise start re-evaluation
+        setCurrentJob(nullptr);
+        schedulerTimer.start();
+    }
+    else if (currentJob->getState() == SchedulerJob::JOB_IDLE)
+    {
+        // job constraints no longer valid, start re-evaluation
         setCurrentJob(nullptr);
         schedulerTimer.start();
     }
