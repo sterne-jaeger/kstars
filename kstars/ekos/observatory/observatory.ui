@@ -126,7 +126,7 @@
                <item row="0" column="0">
                 <widget class="QLabel" name="motionLabel">
                  <property name="enabled">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <property name="text">
                   <string>Motion</string>
@@ -802,45 +802,7 @@ font-weight:bold;
         <property name="horizontalSpacing">
          <number>3</number>
         </property>
-        <item row="0" column="2">
-         <widget class="QLabel" name="weatherStatusLabel">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>48</width>
-            <height>48</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>48</width>
-            <height>48</height>
-           </size>
-          </property>
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="0">
-         <widget class="QLabel" name="weatherLabel">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="toolTip">
-           <string>Display the weather status. The warning and alert limits are set in the INDI tab.</string>
-          </property>
-          <property name="text">
-           <string>Weather Status: </string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0" colspan="4" alignment="Qt::AlignTop">
+        <item row="3" column="0" colspan="4" alignment="Qt::AlignTop">
          <widget class="QGroupBox" name="weatherActionsBox">
           <property name="enabled">
            <bool>false</bool>
@@ -1064,11 +1026,59 @@ font-weight:bold;
           </property>
          </spacer>
         </item>
-        <item row="1" column="0">
-         <widget class="QGroupBox" name="sensorDataBox">
-          <property name="title">
-           <string>Sensor Data</string>
+        <item row="0" column="2">
+         <widget class="QLabel" name="weatherStatusLabel">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
           </property>
+          <property name="minimumSize">
+           <size>
+            <width>48</width>
+            <height>48</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>48</width>
+            <height>48</height>
+           </size>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="weatherLabel">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+           <string>Display the weather status. The warning and alert limits are set in the INDI tab.</string>
+          </property>
+          <property name="text">
+           <string>Weather Status: </string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0" colspan="3">
+         <widget class="QTabWidget" name="tabWidget">
+          <property name="currentIndex">
+           <number>0</number>
+          </property>
+          <widget class="QWidget" name="dataTab">
+           <attribute name="title">
+            <string>Sensor Data</string>
+           </attribute>
+          </widget>
+          <widget class="QWidget" name="graphsTab">
+           <attribute name="title">
+            <string>Sensor Graphs</string>
+           </attribute>
+          </widget>
          </widget>
         </item>
        </layout>

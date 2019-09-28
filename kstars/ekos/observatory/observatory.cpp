@@ -40,7 +40,7 @@ Observatory::Observatory()
     weatherAlertSchedulerCB->setVisible(false);
     // initialize the weather sensor data group box
     sensorDataBoxLayout = new QFormLayout();
-    sensorDataBox->setLayout(sensorDataBoxLayout);
+    dataTab->setLayout(sensorDataBoxLayout);
 }
 
 void Observatory::setObseratoryStatusControl(ObservatoryStatusControl control)
