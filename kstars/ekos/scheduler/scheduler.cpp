@@ -1430,9 +1430,6 @@ void Scheduler::start()
             startupB->setEnabled(false);
             shutdownB->setEnabled(false);
 
-            /* No, don't reset everything */
-            /* Reset and re-evaluate all scheduler jobs, then start the Scheduler */
-            /* startJobEvaluation(); */
             state = SCHEDULER_RUNNING;
             emit newStatus(state);
             schedulerTimer.start();
@@ -1564,7 +1561,7 @@ void Scheduler::evaluateJobs()
         switch (job->getCompletionCondition())
         {
             case SchedulerJob::FINISH_AT:
-                /* Job is complete if its fixed completion time is passed */
+                /* If planned finishing time has passed, the job is set to IDLE waiting for a next chance to run */
                 if (job->getCompletionTime().isValid() && job->getCompletionTime() < now)
                 {
                     job->setState(SchedulerJob::JOB_IDLE);
@@ -3110,7 +3107,7 @@ void Scheduler::checkProcessExit(int exitCode)
 
 bool Scheduler::checkStatus()
 {
-    foreach (auto job, jobs)
+    for (auto job: jobs)
         job->updateJobCells();
 
     if (state == SCHEDULER_PAUSED)
