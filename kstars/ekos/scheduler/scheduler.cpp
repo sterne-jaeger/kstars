@@ -1430,8 +1430,9 @@ void Scheduler::start()
             startupB->setEnabled(false);
             shutdownB->setEnabled(false);
 
+            /* No, don't reset everything */
             /* Reset and re-evaluate all scheduler jobs, then start the Scheduler */
-            startJobEvaluation();
+            /* startJobEvaluation(); */
             state = SCHEDULER_RUNNING;
             emit newStatus(state);
             schedulerTimer.start();
@@ -3109,6 +3110,9 @@ void Scheduler::checkProcessExit(int exitCode)
 
 bool Scheduler::checkStatus()
 {
+    foreach (auto job, jobs)
+        job->updateJobCells();
+
     if (state == SCHEDULER_PAUSED)
     {
         if (currentJob == nullptr)
@@ -6707,7 +6711,7 @@ void Scheduler::simClockScaleChanged(float newScale)
         QTime const remainingTimeMs = QTime::fromMSecsSinceStartOfDay(std::lround((double) sleepTimer.remainingTime()
                                                                                   * KStarsData::Instance()->clock()->scale()
                                                                                   / newScale));
-        appendLogText(i18n("Sleeping for %2 on simulation clock update until observation job %1 is ready...", currentJob->getName(),
+        appendLogText(i18n("Sleeping for %1 on simulation clock update until next observation job is ready...",
                            remainingTimeMs.toString("hh:mm:ss")));
         sleepTimer.stop();
         sleepTimer.start(remainingTimeMs.msecsSinceStartOfDay());
@@ -7257,6 +7261,8 @@ void Scheduler::setWeatherStatus(ISD::Weather::Status status)
 
 bool Scheduler::shouldSchedulerSleep(SchedulerJob *currentJob)
 {
+    Q_ASSERT_X(nullptr != currentJob, __FUNCTION__, "There must be a valid current job for Scheduler to test sleep requirement");
+
     if (currentJob->getLightFramesRequired() == false)
         return false;
 
@@ -7318,7 +7324,7 @@ bool Scheduler::shouldSchedulerSleep(SchedulerJob *currentJob)
         sleepLabel->show();
 
         // Warn the user if the next job is really far away - 60/5 = 12 times the lead time
-        if (nextObservationTime > Options::leadTime() * 60 * 12)
+        if (nextObservationTime > Options::leadTime() * 60 * 12 && !Options::preemptiveShutdown())
         {
             dms delay(static_cast<double>(nextObservationTime * 15.0 / 3600.0));
             appendLogText(i18n(

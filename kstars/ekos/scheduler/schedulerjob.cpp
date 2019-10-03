@@ -237,7 +237,6 @@ void SchedulerJob::setAltitudeCell(QTableWidgetItem *value)
     altitudeCell = value;
     if (nullptr != altitudeCell)
         altitudeCell->setToolTip(i18n("Current altitude of the target of job '%1'.\n"
-                                      "The altitude at startup, if available, is displayed between parentheses.\n"
                                       "A rising target is indicated with an arrow going up.\n"
                                       "A setting target is indicated with an arrow going down.",
                                       name));
@@ -248,6 +247,7 @@ void SchedulerJob::setStartupCell(QTableWidgetItem *value)
     startupCell = value;
     if (nullptr != startupCell)
         startupCell->setToolTip(i18n("Startup time for job '%1', as estimated by the Scheduler.\n"
+                                     "The altitude at startup, if available, is displayed too.\n"
                                      "Fixed time from user or culmination time is marked with a chronometer symbol. ",
                                      name));
 }
