@@ -89,7 +89,15 @@ class Observatory : public QWidget, public Ui::Observatory
 
         // weather sensor data
         QFormLayout* sensorDataBoxLayout;
-        QList<QPair<QLabel*, QLineEdit*>*> sensorDataWidgets;
+        // map id -> (label, widget)
+        std::map<QString, QPair<QLabel*, QLineEdit*>*> sensorDataWidgets = {};
+        // map id -> sensor unit (°C, m/s, ...)
+        std::map<QString, QString> sensorDataUnits = {};
+        // map id -> x-axis and y-axis
+        std::map<QString, QList<double>> sensorDataValuesX = {};
+        std::map<QString, QList<double>> sensorDataValuesY = {};
+
+        void updateSensorData(std::vector<ISD::Weather::WeatherData> weatherData);
 
 
     private slots:
@@ -100,6 +108,9 @@ class Observatory : public QWidget, public Ui::Observatory
         void initWeather();
         void shutdownWeather();
         void setWeatherStatus(ISD::Weather::Status status);
+
+        // sensor data graphs
+        void initSensorGraphs();
 
 
         // reacting on weather changes

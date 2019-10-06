@@ -40,7 +40,8 @@ Observatory::Observatory()
     weatherAlertSchedulerCB->setVisible(false);
     // initialize the weather sensor data group box
     sensorDataBoxLayout = new QFormLayout();
-    dataTab->setLayout(sensorDataBoxLayout);
+    sensorData->setLayout(sensorDataBoxLayout);
+    initSensorGraphs();
 }
 
 void Observatory::setObseratoryStatusControl(ObservatoryStatusControl control)
@@ -496,6 +497,55 @@ void Observatory::shutdownWeather()
 }
 
 
+void Observatory::updateSensorData(std::vector<ISD::Weather::WeatherData> weatherData)
+{
+    std::vector<ISD::Weather::WeatherData>::iterator it;
+    for (it=weatherData.begin(); it != weatherData.end(); ++it)
+    {
+        QString id = it->label;
+        QDateTime now = KStarsData::Instance()->lt();
+
+        if (sensorDataWidgets[id] == nullptr)
+        {
+            QLabel* labelWidget = new QLabel(it->label);
+            QLineEdit* valueWidget = new QLineEdit(QString().setNum(it->value, 'f', 2));
+            valueWidget->setReadOnly(false);
+            valueWidget->setAlignment(Qt::AlignRight);
+
+            sensorDataWidgets[id] = new QPair<QLabel*, QLineEdit*>(labelWidget, valueWidget);
+
+            sensorDataBoxLayout->addRow(labelWidget, valueWidget);
+         }
+        else
+        {
+            sensorDataWidgets[id]->first->setText(QString(it->label));
+            sensorDataWidgets[id]->second->setText(QString().setNum(it->value, 'f', 2));
+        }
+
+        // store sensor data unit if necessary
+        if (sensorDataUnits.count(id) == 0)
+        {
+            QString unit = "none";
+            int brac_open  = it->label.lastIndexOf("(");
+            int brac_close = it->label.lastIndexOf(")");
+            if (brac_open+1 < brac_close && brac_open > 0)
+                unit = it->label.mid(brac_open+1, brac_close-brac_open-1);
+            sensorDataUnits[id] = unit;
+        }
+
+        // lazy initialization of the sensor's value list
+        if (sensorDataValuesX.count(id) == 0)
+        {
+            sensorDataValuesX[id] = {};
+            sensorDataValuesY[id] = {};
+        }
+
+        // store the sensor value
+        sensorDataValuesX[id].append(static_cast<double>(now.toTime_t()));
+        sensorDataValuesY[id].append(it->value);
+    }
+}
+
 void Observatory::setWeatherStatus(ISD::Weather::Status status)
 {
     std::string label;
@@ -523,29 +573,104 @@ void Observatory::setWeatherStatus(ISD::Weather::Status status)
     std::vector<ISD::Weather::WeatherData> weatherData = getWeatherModel()->getWeatherData();
 
     // update weather sensor data
-    int row_nr = 0;
-    std::vector<ISD::Weather::WeatherData>::iterator it;
-    for (it=weatherData.begin(); it != weatherData.end(); ++it)
+    updateSensorData(weatherData);
+
+}
+
+void Observatory::initSensorGraphs()
+{
+    // prepare data:
+    QVector<double> x1(20), y1(20);
+    QVector<double> x2(100), y2(100);
+    QVector<double> x3(20), y3(20);
+    QVector<double> x4(20), y4(20);
+    for (int i=0; i<x1.size(); ++i)
     {
-        if (sensorDataBoxLayout->rowCount() > row_nr)
-        {
-            sensorDataWidgets.value(row_nr)->first->setText(QString(it->label));
-            sensorDataWidgets.value(row_nr)->second->setText(QString().setNum(it->value, 'f', 2));
-         }
-        else
-        {
-            QLabel* labelWidget = new QLabel(it->label);
-            QLineEdit* valueWidget = new QLineEdit(QString().setNum(it->value, 'f', 2));
-            valueWidget->setReadOnly(false);
-            valueWidget->setAlignment(Qt::AlignRight);
-
-            sensorDataWidgets.append(new QPair<QLabel*, QLineEdit*>(labelWidget, valueWidget));
-
-            sensorDataBoxLayout->addRow(labelWidget, valueWidget);
-        }
-        row_nr++;
+      x1[i] = i/(double)(x1.size()-1)*10;
+      y1[i] = qCos(x1[i]*0.8+qSin(x1[i]*0.16+1.0))*qSin(x1[i]*0.54)+1.4;
+    }
+    for (int i=0; i<x2.size(); ++i)
+    {
+      x2[i] = i/(double)(x2.size()-1)*10;
+      y2[i] = qCos(x2[i]*0.85+qSin(x2[i]*0.165+1.1))*qSin(x2[i]*0.50)+1.7;
+    }
+    for (int i=0; i<x3.size(); ++i)
+    {
+      x3[i] = i/(double)(x3.size()-1)*10;
+      y3[i] = 0.05+3*(0.5+qCos(x3[i]*x3[i]*0.2+2)*0.5)/(double)(x3[i]+0.7)+qrand()/(double)RAND_MAX*0.01;
+    }
+    for (int i=0; i<x4.size(); ++i)
+    {
+      x4[i] = x3[i];
+      y4[i] = (0.5-y3[i])+((x4[i]-2)*(x4[i]-2)*0.02);
     }
 
+    // create and configure plottables:
+    QCPGraph *graph1 = sensorGraphs->addGraph();
+    graph1->setData(x1, y1);
+    graph1->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, QPen(Qt::black, 1.5), QBrush(Qt::white), 9));
+    graph1->setPen(QPen(QColor(120, 120, 120), 2));
+
+    QCPGraph *graph2 = sensorGraphs->addGraph();
+    graph2->setData(x2, y2);
+    graph2->setPen(Qt::NoPen);
+    graph2->setBrush(QColor(200, 200, 200, 20));
+    graph2->setChannelFillGraph(graph1);
+
+    QCPBars *bars1 = new QCPBars(sensorGraphs->xAxis, sensorGraphs->yAxis);
+    bars1->setWidth(9/(double)x3.size());
+    bars1->setData(x3, y3);
+    bars1->setPen(Qt::NoPen);
+    bars1->setBrush(QColor(10, 140, 70, 160));
+
+    QCPBars *bars2 = new QCPBars(sensorGraphs->xAxis, sensorGraphs->yAxis);
+    bars2->setWidth(9/(double)x4.size());
+    bars2->setData(x4, y4);
+    bars2->setPen(Qt::NoPen);
+    bars2->setBrush(QColor(10, 100, 50, 70));
+    bars2->moveAbove(bars1);
+
+    // move bars above graphs and grid below bars:
+    sensorGraphs->addLayer("abovemain", sensorGraphs->layer("main"), QCustomPlot::limAbove);
+    sensorGraphs->addLayer("belowmain", sensorGraphs->layer("main"), QCustomPlot::limBelow);
+    graph1->setLayer("abovemain");
+    sensorGraphs->xAxis->grid()->setLayer("belowmain");
+    sensorGraphs->yAxis->grid()->setLayer("belowmain");
+
+    // set some pens, brushes and backgrounds:
+    sensorGraphs->xAxis->setBasePen(QPen(Qt::white, 1));
+    sensorGraphs->yAxis->setBasePen(QPen(Qt::white, 1));
+    sensorGraphs->xAxis->setTickPen(QPen(Qt::white, 1));
+    sensorGraphs->yAxis->setTickPen(QPen(Qt::white, 1));
+    sensorGraphs->xAxis->setSubTickPen(QPen(Qt::white, 1));
+    sensorGraphs->yAxis->setSubTickPen(QPen(Qt::white, 1));
+    sensorGraphs->xAxis->setTickLabelColor(Qt::white);
+    sensorGraphs->yAxis->setTickLabelColor(Qt::white);
+    sensorGraphs->xAxis->grid()->setPen(QPen(QColor(140, 140, 140), 1, Qt::DotLine));
+    sensorGraphs->yAxis->grid()->setPen(QPen(QColor(140, 140, 140), 1, Qt::DotLine));
+    sensorGraphs->xAxis->grid()->setSubGridPen(QPen(QColor(80, 80, 80), 1, Qt::DotLine));
+    sensorGraphs->yAxis->grid()->setSubGridPen(QPen(QColor(80, 80, 80), 1, Qt::DotLine));
+    sensorGraphs->xAxis->grid()->setSubGridVisible(true);
+    sensorGraphs->yAxis->grid()->setSubGridVisible(true);
+    sensorGraphs->xAxis->grid()->setZeroLinePen(Qt::NoPen);
+    sensorGraphs->yAxis->grid()->setZeroLinePen(Qt::NoPen);
+    sensorGraphs->xAxis->setUpperEnding(QCPLineEnding::esSpikeArrow);
+    sensorGraphs->yAxis->setUpperEnding(QCPLineEnding::esSpikeArrow);
+    QLinearGradient plotGradient;
+    plotGradient.setStart(0, 0);
+    plotGradient.setFinalStop(0, 350);
+    plotGradient.setColorAt(0, QColor(80, 80, 80));
+    plotGradient.setColorAt(1, QColor(50, 50, 50));
+    sensorGraphs->setBackground(plotGradient);
+    QLinearGradient axisRectGradient;
+    axisRectGradient.setStart(0, 0);
+    axisRectGradient.setFinalStop(0, 350);
+    axisRectGradient.setColorAt(0, QColor(80, 80, 80));
+    axisRectGradient.setColorAt(1, QColor(30, 30, 30));
+    sensorGraphs->axisRect()->setBackground(axisRectGradient);
+
+    sensorGraphs->rescaleAxes();
+    sensorGraphs->yAxis->setRange(0, 2);
 }
 
 
