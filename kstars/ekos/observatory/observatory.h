@@ -93,9 +93,8 @@ class Observatory : public QWidget, public Ui::Observatory
         std::map<QString, QPair<QLabel*, QLineEdit*>*> sensorDataWidgets = {};
         // map id -> sensor unit (°C, m/s, ...)
         std::map<QString, QString> sensorDataUnits = {};
-        // map id -> x-axis and y-axis
-        std::map<QString, QList<double>> sensorDataValuesX = {};
-        std::map<QString, QList<double>> sensorDataValuesY = {};
+        // map id -> graph
+        std::map<QString, QCPGraph*> sensorDataGraphs = {};
 
         void updateSensorData(std::vector<ISD::Weather::WeatherData> weatherData);
 
@@ -111,7 +110,7 @@ class Observatory : public QWidget, public Ui::Observatory
 
         // sensor data graphs
         void initSensorGraphs();
-
+        void updateSensorGraphs(QString label, QDateTime now, double value);
 
         // reacting on weather changes
         void weatherWarningSettingsChanged();

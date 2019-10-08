@@ -497,13 +497,56 @@ void Observatory::shutdownWeather()
 }
 
 
+void Observatory::updateSensorGraphs(QString label, QDateTime now, double value)
+{
+    // we assume that labels are unique and use the full label as identifier
+    QString id = label;
+
+    if (sensorDataUnits.count(label) == 0)
+    {
+        QString unit = "none";
+        int brac_open  = label.lastIndexOf("(");
+        int brac_close = label.lastIndexOf(")");
+        if (brac_open+1 < brac_close && brac_open > 0)
+            unit = label.mid(brac_open+1, brac_close-brac_open-1);
+        sensorDataUnits[id] = unit;
+        appendLogText(i18n("New sensor '%1' detected - unit = '%2'.", label, sensorDataUnits[id]));
+
+        // create a new temperature graph
+        if (sensorDataUnits[id] == "C")
+        {
+            QCPGraph *graph = sensorGraphs->addGraph();
+            if (brac_open > 0)
+                graph->setName(label.left(brac_open-1).trimmed());
+            else
+                graph->setName(label);
+
+            graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, QPen(Qt::black, 1.5), QBrush(Qt::white), 9));
+            graph->setPen(QPen(QColor(120, 120, 120), 2));
+            sensorDataGraphs[id] = graph;
+
+            sensorGraphs->xAxis->setRange(now.toTime_t(), now.toTime_t()+120);
+            appendLogText(i18n("New temperature sensor '%1' detected.", label));
+        }
+    }
+
+    // add data for the graphs we display
+    if (sensorDataGraphs[id] != nullptr)
+    {
+        sensorDataGraphs[id]->addData(static_cast<double>(now.toTime_t()), value);
+        sensorGraphs->replot();
+        sensorGraphs->rescaleAxes();
+    }
+}
+
 void Observatory::updateSensorData(std::vector<ISD::Weather::WeatherData> weatherData)
 {
     std::vector<ISD::Weather::WeatherData>::iterator it;
+    QDateTime now = KStarsData::Instance()->lt();
+
     for (it=weatherData.begin(); it != weatherData.end(); ++it)
     {
         QString id = it->label;
-        QDateTime now = KStarsData::Instance()->lt();
 
         if (sensorDataWidgets[id] == nullptr)
         {
@@ -523,26 +566,7 @@ void Observatory::updateSensorData(std::vector<ISD::Weather::WeatherData> weathe
         }
 
         // store sensor data unit if necessary
-        if (sensorDataUnits.count(id) == 0)
-        {
-            QString unit = "none";
-            int brac_open  = it->label.lastIndexOf("(");
-            int brac_close = it->label.lastIndexOf(")");
-            if (brac_open+1 < brac_close && brac_open > 0)
-                unit = it->label.mid(brac_open+1, brac_close-brac_open-1);
-            sensorDataUnits[id] = unit;
-        }
-
-        // lazy initialization of the sensor's value list
-        if (sensorDataValuesX.count(id) == 0)
-        {
-            sensorDataValuesX[id] = {};
-            sensorDataValuesY[id] = {};
-        }
-
-        // store the sensor value
-        sensorDataValuesX[id].append(static_cast<double>(now.toTime_t()));
-        sensorDataValuesY[id].append(it->value);
+        updateSensorGraphs(it->label, now, it->value);
     }
 }
 
@@ -579,64 +603,6 @@ void Observatory::setWeatherStatus(ISD::Weather::Status status)
 
 void Observatory::initSensorGraphs()
 {
-    // prepare data:
-    QVector<double> x1(20), y1(20);
-    QVector<double> x2(100), y2(100);
-    QVector<double> x3(20), y3(20);
-    QVector<double> x4(20), y4(20);
-    for (int i=0; i<x1.size(); ++i)
-    {
-      x1[i] = i/(double)(x1.size()-1)*10;
-      y1[i] = qCos(x1[i]*0.8+qSin(x1[i]*0.16+1.0))*qSin(x1[i]*0.54)+1.4;
-    }
-    for (int i=0; i<x2.size(); ++i)
-    {
-      x2[i] = i/(double)(x2.size()-1)*10;
-      y2[i] = qCos(x2[i]*0.85+qSin(x2[i]*0.165+1.1))*qSin(x2[i]*0.50)+1.7;
-    }
-    for (int i=0; i<x3.size(); ++i)
-    {
-      x3[i] = i/(double)(x3.size()-1)*10;
-      y3[i] = 0.05+3*(0.5+qCos(x3[i]*x3[i]*0.2+2)*0.5)/(double)(x3[i]+0.7)+qrand()/(double)RAND_MAX*0.01;
-    }
-    for (int i=0; i<x4.size(); ++i)
-    {
-      x4[i] = x3[i];
-      y4[i] = (0.5-y3[i])+((x4[i]-2)*(x4[i]-2)*0.02);
-    }
-
-    // create and configure plottables:
-    QCPGraph *graph1 = sensorGraphs->addGraph();
-    graph1->setData(x1, y1);
-    graph1->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, QPen(Qt::black, 1.5), QBrush(Qt::white), 9));
-    graph1->setPen(QPen(QColor(120, 120, 120), 2));
-
-    QCPGraph *graph2 = sensorGraphs->addGraph();
-    graph2->setData(x2, y2);
-    graph2->setPen(Qt::NoPen);
-    graph2->setBrush(QColor(200, 200, 200, 20));
-    graph2->setChannelFillGraph(graph1);
-
-    QCPBars *bars1 = new QCPBars(sensorGraphs->xAxis, sensorGraphs->yAxis);
-    bars1->setWidth(9/(double)x3.size());
-    bars1->setData(x3, y3);
-    bars1->setPen(Qt::NoPen);
-    bars1->setBrush(QColor(10, 140, 70, 160));
-
-    QCPBars *bars2 = new QCPBars(sensorGraphs->xAxis, sensorGraphs->yAxis);
-    bars2->setWidth(9/(double)x4.size());
-    bars2->setData(x4, y4);
-    bars2->setPen(Qt::NoPen);
-    bars2->setBrush(QColor(10, 100, 50, 70));
-    bars2->moveAbove(bars1);
-
-    // move bars above graphs and grid below bars:
-    sensorGraphs->addLayer("abovemain", sensorGraphs->layer("main"), QCustomPlot::limAbove);
-    sensorGraphs->addLayer("belowmain", sensorGraphs->layer("main"), QCustomPlot::limBelow);
-    graph1->setLayer("abovemain");
-    sensorGraphs->xAxis->grid()->setLayer("belowmain");
-    sensorGraphs->yAxis->grid()->setLayer("belowmain");
-
     // set some pens, brushes and backgrounds:
     sensorGraphs->xAxis->setBasePen(QPen(Qt::white, 1));
     sensorGraphs->yAxis->setBasePen(QPen(Qt::white, 1));
@@ -669,8 +635,17 @@ void Observatory::initSensorGraphs()
     axisRectGradient.setColorAt(1, QColor(30, 30, 30));
     sensorGraphs->axisRect()->setBackground(axisRectGradient);
 
-    sensorGraphs->rescaleAxes();
-    sensorGraphs->yAxis->setRange(0, 2);
+    sensorGraphs->yAxis->setLabel("C");
+    sensorGraphs->yAxis->setLabelColor(Qt::white);
+
+    QSharedPointer<QCPAxisTickerDateTime> dateTicker(new QCPAxisTickerDateTime);
+    dateTicker->setDateTimeFormat("hh:mm");
+    dateTicker->setTickCount(2);
+    sensorGraphs->xAxis->setTicker(dateTicker);
+
+    // allow dragging in all directions
+    sensorGraphs->setInteraction(QCP::iRangeDrag, true);
+    sensorGraphs->setInteraction(QCP::iRangeZoom);
 }
 
 
