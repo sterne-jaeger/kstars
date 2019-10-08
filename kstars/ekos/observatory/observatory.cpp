@@ -39,7 +39,7 @@ Observatory::Observatory()
     weatherWarningSchedulerCB->setVisible(false);
     weatherAlertSchedulerCB->setVisible(false);
     // initialize the weather sensor data group box
-    sensorDataBoxLayout = new QFormLayout();
+    sensorDataBoxLayout = new QGridLayout();
     sensorData->setLayout(sensorDataBoxLayout);
     initSensorGraphs();
 }
@@ -497,43 +497,23 @@ void Observatory::shutdownWeather()
 }
 
 
-void Observatory::updateSensorGraphs(QString label, QDateTime now, double value)
+void Observatory::updateSensorGraph(QString label, QDateTime now, double value)
 {
     // we assume that labels are unique and use the full label as identifier
     QString id = label;
 
-    if (sensorDataUnits.count(label) == 0)
-    {
-        QString unit = "none";
-        int brac_open  = label.lastIndexOf("(");
-        int brac_close = label.lastIndexOf(")");
-        if (brac_open+1 < brac_close && brac_open > 0)
-            unit = label.mid(brac_open+1, brac_close-brac_open-1);
-        sensorDataUnits[id] = unit;
-        appendLogText(i18n("New sensor '%1' detected - unit = '%2'.", label, sensorDataUnits[id]));
+    // lazy instantiation of the sensor data storage
+    if (sensorGraphData[id] == nullptr)
+        sensorGraphData[id] = new QVector<QCPGraphData>();
 
-        // create a new temperature graph
-        if (sensorDataUnits[id] == "C")
-        {
-            QCPGraph *graph = sensorGraphs->addGraph();
-            if (brac_open > 0)
-                graph->setName(label.left(brac_open-1).trimmed());
-            else
-                graph->setName(label);
-
-            graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, QPen(Qt::black, 1.5), QBrush(Qt::white), 9));
-            graph->setPen(QPen(QColor(120, 120, 120), 2));
-            sensorDataGraphs[id] = graph;
-
-            sensorGraphs->xAxis->setRange(now.toTime_t(), now.toTime_t()+120);
-            appendLogText(i18n("New temperature sensor '%1' detected.", label));
-        }
-    }
+    // store the data
+    sensorGraphData[id]->append(QCPGraphData(static_cast<double>(now.toTime_t()), value));
 
     // add data for the graphs we display
-    if (sensorDataGraphs[id] != nullptr)
+    if (selectedSensorID == id)
     {
-        sensorDataGraphs[id]->addData(static_cast<double>(now.toTime_t()), value);
+        // display data point
+        sensorGraphs->graph()->addData(sensorGraphData[id]->last().key, sensorGraphData[id]->last().value);
         sensorGraphs->replot();
         sensorGraphs->rescaleAxes();
     }
@@ -546,18 +526,31 @@ void Observatory::updateSensorData(std::vector<ISD::Weather::WeatherData> weathe
 
     for (it=weatherData.begin(); it != weatherData.end(); ++it)
     {
-        QString id = it->label;
+        QString const id = it->label;
 
         if (sensorDataWidgets[id] == nullptr)
         {
-            QLabel* labelWidget = new QLabel(it->label);
+            QPushButton* labelWidget = new QPushButton(it->label);
+            labelWidget->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed));
+            labelWidget->setMaximumWidth(1000);
+
             QLineEdit* valueWidget = new QLineEdit(QString().setNum(it->value, 'f', 2));
-            valueWidget->setReadOnly(false);
+            // fix width to enable stretching of the graph
+            valueWidget->setMinimumWidth(96);
+            valueWidget->setMaximumWidth(96);
+            valueWidget->setReadOnly(true);
             valueWidget->setAlignment(Qt::AlignRight);
 
-            sensorDataWidgets[id] = new QPair<QLabel*, QLineEdit*>(labelWidget, valueWidget);
+            sensorDataWidgets[id] = new QPair<QAbstractButton*, QLineEdit*>(labelWidget, valueWidget);
 
-            sensorDataBoxLayout->addRow(labelWidget, valueWidget);
+            sensorDataBoxLayout->addWidget(labelWidget, sensorDataBoxLayout->rowCount(), 0);
+            sensorDataBoxLayout->addWidget(valueWidget, sensorDataBoxLayout->rowCount()-1, 1);
+
+            connect(labelWidget, &QPushButton::clicked, [=]()
+            {
+                this->selectedSensorChanged(id);
+            });
+
          }
         else
         {
@@ -566,9 +559,29 @@ void Observatory::updateSensorData(std::vector<ISD::Weather::WeatherData> weathe
         }
 
         // store sensor data unit if necessary
-        updateSensorGraphs(it->label, now, it->value);
+        updateSensorGraph(it->label, now, it->value);
     }
 }
+
+void Observatory::selectedSensorChanged(QString id)
+{
+    QVector<QCPGraphData> *data = sensorGraphData[id];
+
+    if (data != nullptr)
+    {
+        // copy the graph data to the graph container
+        QCPGraphDataContainer *container = new QCPGraphDataContainer();
+        for (QVector<QCPGraphData>::iterator it = data->begin(); it != data->end(); ++it)
+            container->add(QCPGraphData(it->key, it->value));
+
+        sensorGraphs->graph()->setData(QSharedPointer<QCPGraphDataContainer>(container));
+        sensorGraphs->replot();
+        sensorGraphs->rescaleAxes();
+        selectedSensorID = id;
+    }
+}
+
+
 
 void Observatory::setWeatherStatus(ISD::Weather::Status status)
 {
@@ -635,9 +648,6 @@ void Observatory::initSensorGraphs()
     axisRectGradient.setColorAt(1, QColor(30, 30, 30));
     sensorGraphs->axisRect()->setBackground(axisRectGradient);
 
-    sensorGraphs->yAxis->setLabel("C");
-    sensorGraphs->yAxis->setLabelColor(Qt::white);
-
     QSharedPointer<QCPAxisTickerDateTime> dateTicker(new QCPAxisTickerDateTime);
     dateTicker->setDateTimeFormat("hh:mm");
     dateTicker->setTickCount(2);
@@ -646,6 +656,13 @@ void Observatory::initSensorGraphs()
     // allow dragging in all directions
     sensorGraphs->setInteraction(QCP::iRangeDrag, true);
     sensorGraphs->setInteraction(QCP::iRangeZoom);
+
+    // create the universal graph
+    QCPGraph *graph = sensorGraphs->addGraph();
+    graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, QPen(Qt::black, 1.5), QBrush(Qt::green), 5));
+    graph->setPen(QPen(Qt::darkGreen));
+    graph->setBrush(QColor(10, 100, 50, 70));
+
 }
 
 

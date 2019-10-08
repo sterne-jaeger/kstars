@@ -88,15 +88,17 @@ class Observatory : public QWidget, public Ui::Observatory
         void buttonPressed(QPushButton *button, QString title);
 
         // weather sensor data
-        QFormLayout* sensorDataBoxLayout;
+        QGridLayout* sensorDataBoxLayout;
         // map id -> (label, widget)
-        std::map<QString, QPair<QLabel*, QLineEdit*>*> sensorDataWidgets = {};
-        // map id -> sensor unit (°C, m/s, ...)
-        std::map<QString, QString> sensorDataUnits = {};
-        // map id -> graph
-        std::map<QString, QCPGraph*> sensorDataGraphs = {};
+        std::map<QString, QPair<QAbstractButton*, QLineEdit*>*> sensorDataWidgets = {};
+        // map id -> graph key x value vector
+        std::map<QString, QVector<QCPGraphData>*> sensorGraphData = {};
+
+        // selected sensor for graph display
+        QString selectedSensorID = "";
 
         void updateSensorData(std::vector<ISD::Weather::WeatherData> weatherData);
+        void updateSensorGraph(QString label, QDateTime now, double value);
 
 
     private slots:
@@ -110,11 +112,13 @@ class Observatory : public QWidget, public Ui::Observatory
 
         // sensor data graphs
         void initSensorGraphs();
-        void updateSensorGraphs(QString label, QDateTime now, double value);
 
         // reacting on weather changes
         void weatherWarningSettingsChanged();
         void weatherAlertSettingsChanged();
+
+        // reacting on sensor selection change
+        void selectedSensorChanged(QString id);
 
         // reacting on observatory status changes
         void observatoryStatusChanged(bool ready);
