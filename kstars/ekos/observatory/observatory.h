@@ -97,6 +97,9 @@ class Observatory : public QWidget, public Ui::Observatory
         // selected sensor for graph display
         QString selectedSensorID = "";
 
+        // button group for sensor names to ensure, that only one button is pressed
+        QButtonGroup *sensorDataNamesGroup;
+
         void updateSensorData(std::vector<ISD::Weather::WeatherData> weatherData);
         void updateSensorGraph(QString label, QDateTime now, double value);
 

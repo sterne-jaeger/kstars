@@ -1072,10 +1072,17 @@ font-weight:bold;
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Sensor data over time. Click on the name on the left side to select the sensor to be displayed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
          </widget>
         </item>
         <item row="1" column="0">
-         <widget class="QWidget" name="sensorData" native="true"/>
+         <widget class="QWidget" name="sensorData" native="true">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Current data of the weather sensors. Click on the sensor name to display its data over time.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>

@@ -41,6 +41,7 @@ Observatory::Observatory()
     // initialize the weather sensor data group box
     sensorDataBoxLayout = new QGridLayout();
     sensorData->setLayout(sensorDataBoxLayout);
+
     initSensorGraphs();
 }
 
@@ -532,7 +533,10 @@ void Observatory::updateSensorData(std::vector<ISD::Weather::WeatherData> weathe
         {
             QPushButton* labelWidget = new QPushButton(it->label);
             labelWidget->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed));
-            labelWidget->setMaximumWidth(1000);
+            labelWidget->setCheckable(true);
+            labelWidget->setStyleSheet("QPushButton:checked\n{\nbackground-color: maroon;\nborder: 1px outset;\nfont-weight:bold;\n}");
+            // we need the object name since the label may contain '&' for keyboard shortcuts
+            labelWidget->setObjectName(it->label);
 
             QLineEdit* valueWidget = new QLineEdit(QString().setNum(it->value, 'f', 2));
             // fix width to enable stretching of the graph
@@ -546,11 +550,14 @@ void Observatory::updateSensorData(std::vector<ISD::Weather::WeatherData> weathe
             sensorDataBoxLayout->addWidget(labelWidget, sensorDataBoxLayout->rowCount(), 0);
             sensorDataBoxLayout->addWidget(valueWidget, sensorDataBoxLayout->rowCount()-1, 1);
 
-            connect(labelWidget, &QPushButton::clicked, [=]()
+            // initial graph selection
+            if (selectedSensorID == "" && id.indexOf('(') > 0 && id.indexOf('(') < id.indexOf(')'))
             {
-                this->selectedSensorChanged(id);
-            });
+                selectedSensorID = id;
+                labelWidget->setChecked(true);
+            }
 
+            sensorDataNamesGroup->addButton(labelWidget);
          }
         else
         {
@@ -659,10 +666,16 @@ void Observatory::initSensorGraphs()
 
     // create the universal graph
     QCPGraph *graph = sensorGraphs->addGraph();
-    graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, QPen(Qt::black, 1.5), QBrush(Qt::green), 5));
+    graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, QPen(Qt::black, 0), QBrush(Qt::green), 5));
     graph->setPen(QPen(Qt::darkGreen));
     graph->setBrush(QColor(10, 100, 50, 70));
 
+    sensorDataNamesGroup = new QButtonGroup();
+    // enable changing the displayed sensor
+    connect(sensorDataNamesGroup, static_cast<void (QButtonGroup::*)(QAbstractButton*)>(&QButtonGroup::buttonClicked), [this](QAbstractButton *button)
+    {
+        selectedSensorChanged(button->objectName());
+    });
 }
 
 
