@@ -515,8 +515,8 @@ void Observatory::updateSensorGraph(QString label, QDateTime now, double value)
     {
         // display data point
         sensorGraphs->graph()->addData(sensorGraphData[id]->last().key, sensorGraphData[id]->last().value);
-        sensorGraphs->replot();
         sensorGraphs->rescaleAxes();
+        sensorGraphs->replot();
     }
 }
 
@@ -582,8 +582,8 @@ void Observatory::selectedSensorChanged(QString id)
             container->add(QCPGraphData(it->key, it->value));
 
         sensorGraphs->graph()->setData(QSharedPointer<QCPGraphDataContainer>(container));
-        sensorGraphs->replot();
         sensorGraphs->rescaleAxes();
+        sensorGraphs->replot();
         selectedSensorID = id;
     }
 }
