@@ -14,7 +14,7 @@
    <string>Observatory</string>
   </property>
   <property name="toolTip">
-   <string>Status of the Observatory</string>
+   <string/>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <property name="spacing">
@@ -1073,7 +1073,7 @@ font-weight:bold;
            </sizepolicy>
           </property>
           <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Sensor data over time. Click on the name on the left side to select the sensor to be displayed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string/>
           </property>
          </widget>
         </item>

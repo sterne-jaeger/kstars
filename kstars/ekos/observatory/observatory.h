@@ -94,12 +94,16 @@ class Observatory : public QWidget, public Ui::Observatory
         // map id -> graph key x value vector
         std::map<QString, QVector<QCPGraphData>*> sensorGraphData = {};
 
+        // map id -> range (+1: values only > 0, 0: values > 0 and < 0; -1: values < 0)
+        std::map<QString, int> sensorRanges = {};
+
         // selected sensor for graph display
         QString selectedSensorID = "";
 
         // button group for sensor names to ensure, that only one button is pressed
         QButtonGroup *sensorDataNamesGroup;
 
+        void initSensorGraphs();
         void updateSensorData(std::vector<ISD::Weather::WeatherData> weatherData);
         void updateSensorGraph(QString label, QDateTime now, double value);
 
@@ -114,7 +118,7 @@ class Observatory : public QWidget, public Ui::Observatory
         void setWeatherStatus(ISD::Weather::Status status);
 
         // sensor data graphs
-        void initSensorGraphs();
+        void mouseOverLine(QMouseEvent *event);
 
         // reacting on weather changes
         void weatherWarningSettingsChanged();

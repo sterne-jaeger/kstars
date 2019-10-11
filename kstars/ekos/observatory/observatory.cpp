@@ -505,7 +505,10 @@ void Observatory::updateSensorGraph(QString label, QDateTime now, double value)
 
     // lazy instantiation of the sensor data storage
     if (sensorGraphData[id] == nullptr)
+    {
         sensorGraphData[id] = new QVector<QCPGraphData>();
+        sensorRanges[id] = value > 0 ? 1 : (value < 0 ? -1 : 0);
+    }
 
     // store the data
     sensorGraphData[id]->append(QCPGraphData(static_cast<double>(now.toTime_t()), value));
@@ -516,6 +519,15 @@ void Observatory::updateSensorGraph(QString label, QDateTime now, double value)
         // display data point
         sensorGraphs->graph()->addData(sensorGraphData[id]->last().key, sensorGraphData[id]->last().value);
         sensorGraphs->rescaleAxes();
+        // ensure that the 0-line is visible
+        if ((sensorRanges[id] > 0 && value < 0) || (sensorRanges[id] < 0 && value > 0))
+            sensorRanges[id] = 0;
+
+        // ensure visibility of the 0-line on the y-axis
+        if (sensorRanges[id] > 0)
+            sensorGraphs->yAxis->setRangeLower(0);
+        else if (sensorRanges[id] < 0)
+            sensorGraphs->yAxis->setRangeUpper(0);
         sensorGraphs->replot();
     }
 }
@@ -569,6 +581,26 @@ void Observatory::updateSensorData(std::vector<ISD::Weather::WeatherData> weathe
         updateSensorGraph(it->label, now, it->value);
     }
 }
+
+void Observatory::mouseOverLine(QMouseEvent *event)
+{
+    double key = sensorGraphs->xAxis->pixelToCoord(event->localPos().x());
+    QCPGraph *graph = qobject_cast<QCPGraph *>(sensorGraphs->plottableAt(event->pos(), false));
+
+    if (graph)
+    {
+        int index = sensorGraphs->graph(0)->findBegin(key);
+        double value = sensorGraphs->graph(0)->dataMainValue(index);
+
+        QToolTip::showText(
+            event->globalPos(),
+            i18n("%1 = %2", selectedSensorID, value));
+    }
+    else {
+        QToolTip::hideText();
+    }
+}
+
 
 void Observatory::selectedSensorChanged(QString id)
 {
@@ -670,12 +702,19 @@ void Observatory::initSensorGraphs()
     graph->setPen(QPen(Qt::darkGreen));
     graph->setBrush(QColor(10, 100, 50, 70));
 
+    // ensure that the 0-line is visible
+    sensorGraphs->yAxis->setRangeLower(0);
+
     sensorDataNamesGroup = new QButtonGroup();
     // enable changing the displayed sensor
     connect(sensorDataNamesGroup, static_cast<void (QButtonGroup::*)(QAbstractButton*)>(&QButtonGroup::buttonClicked), [this](QAbstractButton *button)
     {
         selectedSensorChanged(button->objectName());
     });
+
+    // show current temperature below the mouse
+    connect(sensorGraphs, &QCustomPlot::mouseMove, this, &Ekos::Observatory::mouseOverLine);
+
 }
 
 
