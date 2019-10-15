@@ -114,6 +114,8 @@ class Observatory : public QWidget, public Ui::Observatory
         void statusControlSettingsChanged();
 
         void initWeather();
+        void enableWeather(bool enable);
+        void clearSensorDataHistory();
         void shutdownWeather();
         void setWeatherStatus(ISD::Weather::Status status);
 

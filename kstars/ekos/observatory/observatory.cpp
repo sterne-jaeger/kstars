@@ -33,16 +33,6 @@ Observatory::Observatory()
 
     setDomeModel(new ObservatoryDomeModel());
     setWeatherModel(new ObservatoryWeatherModel());
-    statusDefinitionBox->setVisible(true);
-    statusDefinitionBox->setEnabled(true);
-    // make invisible, since not implemented yet
-    weatherWarningSchedulerCB->setVisible(false);
-    weatherAlertSchedulerCB->setVisible(false);
-    // initialize the weather sensor data group box
-    sensorDataBoxLayout = new QGridLayout();
-    sensorData->setLayout(sensorDataBoxLayout);
-
-    initSensorGraphs();
 }
 
 void Observatory::setObseratoryStatusControl(ObservatoryStatusControl control)
@@ -199,6 +189,10 @@ void Observatory::initDome()
 
         // abort button should always be available
         motionAbortButton->setEnabled(true);
+
+        statusDefinitionBox->setVisible(true);
+        statusDefinitionBox->setEnabled(true);
+
         // update the dome parking status
         setDomeParkStatus(getDomeModel()->parkStatus());
     }
@@ -387,29 +381,52 @@ void Observatory::setShutterStatus(ISD::Dome::ShutterStatus status)
     }
 }
 
+void Observatory::enableWeather(bool enable)
+{
+    weatherBox->setEnabled(enable);
+    clearGraphHistory->setVisible(enable);
+    clearGraphHistory->setEnabled(enable);
+    sensorGraphs->setVisible(enable);
+}
 
+void Observatory::clearSensorDataHistory()
+{
+    std::map<QString, QVector<QCPGraphData>*>::iterator it;
 
+    for (it=sensorGraphData.begin(); it != sensorGraphData.end(); ++it)
+    {
+        QVector<QCPGraphData>* graphDataVector = it->second;
+        if (graphDataVector->size() > 0)
+        {
+            // we keep only the last one
+            QCPGraphData last = graphDataVector->last();
+            graphDataVector->clear();
+            QDateTime when = QDateTime();
+            when.setSecsSinceEpoch(static_cast<int>(last.key));
+            updateSensorGraph(it->first, when, last.value);
+        }
+    }
+
+    // force an update to the current graph
+    if (selectedSensorID != "")
+        selectedSensorChanged(selectedSensorID);
+}
 
 void Observatory::setWeatherModel(ObservatoryWeatherModel *model)
 {
     mObservatoryModel->setWeatherModel(model);
 
-    if (model != nullptr)
-    {
-        connect(weatherWarningBox, &QGroupBox::clicked, model, &ObservatoryWeatherModel::setWarningActionsActive);
-        connect(weatherAlertBox, &QGroupBox::clicked, model, &ObservatoryWeatherModel::setAlertActionsActive);
+    // disable the weather UI
+    enableWeather(false);
 
+    if (model != nullptr)
         connect(model, &Ekos::ObservatoryWeatherModel::ready, this, &Ekos::Observatory::initWeather);
-        connect(model, &Ekos::ObservatoryWeatherModel::newStatus, this, &Ekos::Observatory::setWeatherStatus);
-        connect(model, &Ekos::ObservatoryWeatherModel::disconnected, this, &Ekos::Observatory::shutdownWeather);
-        connect(&weatherStatusTimer, &QTimer::timeout, [this]()
-        {
-            weatherWarningStatusLabel->setText(getWeatherModel()->getWarningActionsStatus());
-            weatherAlertStatusLabel->setText(getWeatherModel()->getAlertActionsStatus());
-        });
-    }
     else
         shutdownWeather();
+
+    // make invisible, since not implemented yet
+    weatherWarningSchedulerCB->setVisible(false);
+    weatherAlertSchedulerCB->setVisible(false);
 }
 
 void Observatory::enableMotionControl(bool enabled)
@@ -477,8 +494,26 @@ void Observatory::showAutoSync(bool enabled)
 
 void Observatory::initWeather()
 {
+    // initialize the weather sensor data group box
+    sensorDataBoxLayout = new QGridLayout();
+    sensorData->setLayout(sensorDataBoxLayout);
+
+    enableWeather(true);
+    initSensorGraphs();
+
+    connect(weatherWarningBox, &QGroupBox::clicked, getWeatherModel(), &ObservatoryWeatherModel::setWarningActionsActive);
+    connect(weatherAlertBox, &QGroupBox::clicked, getWeatherModel(), &ObservatoryWeatherModel::setAlertActionsActive);
+
+    connect(getWeatherModel(), &Ekos::ObservatoryWeatherModel::newStatus, this, &Ekos::Observatory::setWeatherStatus);
+    connect(getWeatherModel(), &Ekos::ObservatoryWeatherModel::disconnected, this, &Ekos::Observatory::shutdownWeather);
+    connect(clearGraphHistory, &QPushButton::clicked, this, &Observatory::clearSensorDataHistory);
+    connect(&weatherStatusTimer, &QTimer::timeout, [this]()
+    {
+        weatherWarningStatusLabel->setText(getWeatherModel()->getWarningActionsStatus());
+        weatherAlertStatusLabel->setText(getWeatherModel()->getAlertActionsStatus());
+    });
+
     weatherBox->setEnabled(true);
-    weatherLabel->setEnabled(true);
     weatherActionsBox->setVisible(true);
     weatherActionsBox->setEnabled(true);
     weatherWarningBox->setChecked(getWeatherModel()->getWarningActionsActive());
@@ -491,10 +526,9 @@ void Observatory::initWeather()
 
 void Observatory::shutdownWeather()
 {
-    weatherBox->setEnabled(false);
-    weatherLabel->setEnabled(false);
-    setWeatherStatus(ISD::Weather::WEATHER_IDLE);
     weatherStatusTimer.stop();
+    setWeatherStatus(ISD::Weather::WEATHER_IDLE);
+    enableWeather(false);
 }
 
 
@@ -511,7 +545,7 @@ void Observatory::updateSensorGraph(QString label, QDateTime now, double value)
     }
 
     // store the data
-    sensorGraphData[id]->append(QCPGraphData(static_cast<double>(now.toTime_t()), value));
+    sensorGraphData[id]->append(QCPGraphData(static_cast<double>(now.toSecsSinceEpoch()), value));
 
     // add data for the graphs we display
     if (selectedSensorID == id)
@@ -644,7 +678,7 @@ void Observatory::setWeatherStatus(ISD::Weather::Status status)
             break;
     }
 
-    weatherStatusLabel->setPixmap(QIcon::fromTheme(label.c_str()).pixmap(QSize(48, 48)));
+    weatherStatusLabel->setPixmap(QIcon::fromTheme(label.c_str()).pixmap(QSize(28, 28)));
 
     std::vector<ISD::Weather::WeatherData> weatherData = getWeatherModel()->getWeatherData();
 
