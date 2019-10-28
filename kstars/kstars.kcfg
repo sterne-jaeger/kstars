@@ -2447,6 +2447,10 @@
       <label>Weather status relevant for the Observatory status.</label>
       <default>true</default>
    </entry>
+   <entry name="weatherSensorGraphShowXAxis" type="Bool">
+      <label>Show the x axis in the sensor graph.</label>
+      <default>true</default>
+   </entry>
    </group>
    <group name="ASTAP">
    <entry name="ASTAPExecutable" type="String">
