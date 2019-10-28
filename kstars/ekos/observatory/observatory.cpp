@@ -386,7 +386,7 @@ void Observatory::enableWeather(bool enable)
     weatherBox->setEnabled(enable);
     clearGraphHistory->setVisible(enable);
     clearGraphHistory->setEnabled(enable);
-    showXAxisCB->setVisible(enable);
+    autoscaleValuesCB->setVisible(enable);
     sensorGraphs->setVisible(enable);
 }
 
@@ -508,9 +508,9 @@ void Observatory::initWeather()
     connect(getWeatherModel(), &Ekos::ObservatoryWeatherModel::newStatus, this, &Ekos::Observatory::setWeatherStatus);
     connect(getWeatherModel(), &Ekos::ObservatoryWeatherModel::disconnected, this, &Ekos::Observatory::shutdownWeather);
     connect(clearGraphHistory, &QPushButton::clicked, this, &Observatory::clearSensorDataHistory);
-    connect(showXAxisCB, &QCheckBox::clicked, [this](bool checked)
+    connect(autoscaleValuesCB, &QCheckBox::clicked, [this](bool checked)
     {
-        getWeatherModel()->setShowSensorGraphXAxis(checked);
+        getWeatherModel()->setAutoScaleValues(checked);
         this->refreshSensorGraph();
     });
     connect(&weatherStatusTimer, &QTimer::timeout, [this]()
@@ -520,7 +520,7 @@ void Observatory::initWeather()
     });
 
     weatherBox->setEnabled(true);
-    showXAxisCB->setChecked(getWeatherModel()->showSensorGraphXAxis());
+    autoscaleValuesCB->setChecked(getWeatherModel()->autoScaleValues());
     weatherActionsBox->setVisible(true);
     weatherActionsBox->setEnabled(true);
     weatherWarningBox->setChecked(getWeatherModel()->getWarningActionsActive());
@@ -569,8 +569,8 @@ void Observatory::updateSensorGraph(QString label, QDateTime now, double value)
 
         // display data point
         sensorGraphs->graph()->addData(sensorGraphData[id]->last().key, sensorGraphData[id]->last().value);
-        sensorGraphs->rescaleAxes();
-        // ensure that the 0-line is visible
+
+        // determine where the x axis is relatively to the value ranges
         if ((sensorRanges[id] > 0 && value < 0) || (sensorRanges[id] < 0 && value > 0))
             sensorRanges[id] = 0;
 
@@ -651,18 +651,18 @@ void Observatory::mouseOverLine(QMouseEvent *event)
 
 void Observatory::refreshSensorGraph()
 {
-    // ensure visibility of the x axis?
-    if (getWeatherModel()->showSensorGraphXAxis())
+
+    sensorGraphs->rescaleAxes();
+
+    // restrict the y-Axis to the values range
+    if (getWeatherModel()->autoScaleValues() == false)
     {
         if (sensorRanges[selectedSensorID] > 0)
             sensorGraphs->yAxis->setRangeLower(0);
         else if (sensorRanges[selectedSensorID] < 0)
             sensorGraphs->yAxis->setRangeUpper(0);
     }
-    else
-    {
-        sensorGraphs->rescaleAxes();
-    }
+
     sensorGraphs->replot();
 }
 

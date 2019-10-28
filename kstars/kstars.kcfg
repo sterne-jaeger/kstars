@@ -2447,8 +2447,8 @@
       <label>Weather status relevant for the Observatory status.</label>
       <default>true</default>
    </entry>
-   <entry name="weatherSensorGraphShowXAxis" type="Bool">
-      <label>Show the x axis in the sensor graph.</label>
+   <entry name="weatherAutoScaleValues" type="Bool">
+      <label>Scale the sensor graph value axis to the values range.</label>
       <default>true</default>
    </entry>
    </group>

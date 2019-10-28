@@ -71,8 +71,8 @@ class ObservatoryWeatherModel : public QObject
         /**
          * @brief Flag whether the X axis should be visible in the sensor graph
          */
-        bool showSensorGraphXAxis() {return m_ShowSensorGraphXAxis;}
-        void setShowSensorGraphXAxis(bool show);
+        bool autoScaleValues() {return m_autoScaleValues;}
+        void setAutoScaleValues(bool show);
 
     public slots:
         /**
@@ -88,7 +88,7 @@ private:
         Weather *weatherInterface;
         QTimer warningTimer, alertTimer;
         struct WeatherActions warningActions, alertActions;
-        bool warningActionsActive, alertActionsActive, m_ShowSensorGraphXAxis;
+        bool warningActionsActive, alertActionsActive, m_autoScaleValues;
 
         void startAlertTimer();
         void startWarningTimer();

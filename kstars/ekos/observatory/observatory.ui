@@ -1101,9 +1101,12 @@ font-weight:bold;
            <number>3</number>
           </property>
           <item>
-           <widget class="QCheckBox" name="showXAxisCB">
+           <widget class="QCheckBox" name="autoscaleValuesCB">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Scale the value axis to the current value range.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
-             <string>show x axis</string>
+             <string>auto scale values</string>
             </property>
            </widget>
           </item>

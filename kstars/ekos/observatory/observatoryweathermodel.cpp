@@ -35,7 +35,7 @@ void ObservatoryWeatherModel::initModel(Weather *weather)
     alertActions.parkDome = Options::weatherAlertCloseDome();
     alertActions.closeShutter = Options::weatherAlertCloseShutter();
     alertActions.delay = Options::weatherAlertDelay();
-    m_ShowSensorGraphXAxis = Options::weatherSensorGraphShowXAxis();
+    m_autoScaleValues = Options::weatherAutoScaleValues();
 
     // not implemented yet
     warningActions.stopScheduler = false;
@@ -109,10 +109,10 @@ void ObservatoryWeatherModel::setAlertActionsActive(bool active)
         startAlertTimer();
 }
 
-void ObservatoryWeatherModel::setShowSensorGraphXAxis(bool value)
+void ObservatoryWeatherModel::setAutoScaleValues(bool value)
 {
-    m_ShowSensorGraphXAxis = value;
-    Options::setWeatherSensorGraphShowXAxis(value);
+    m_autoScaleValues = value;
+    Options::setWeatherAutoScaleValues(value);
 }
 
 void ObservatoryWeatherModel::startAlertTimer()
