@@ -785,6 +785,8 @@ void Observatory::weatherWarningSettingsChanged()
     struct WeatherActions actions;
     actions.parkDome = weatherWarningDomeCB->isChecked();
     actions.closeShutter = weatherWarningShutterCB->isChecked();
+    // Fixme: not implemented yet
+    actions.stopScheduler = false;
     actions.delay = static_cast<unsigned int>(weatherWarningDelaySB->value());
 
     getWeatherModel()->setWarningActions(actions);
@@ -795,6 +797,8 @@ void Observatory::weatherAlertSettingsChanged()
     struct WeatherActions actions;
     actions.parkDome = weatherAlertDomeCB->isChecked();
     actions.closeShutter = weatherAlertShutterCB->isChecked();
+    // Fixme: not implemented yet
+    actions.stopScheduler = false;
     actions.delay = static_cast<unsigned int>(weatherAlertDelaySB->value());
 
     getWeatherModel()->setAlertActions(actions);
