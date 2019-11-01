@@ -4838,6 +4838,16 @@ void Scheduler::startCapture(bool restart)
 {
     Q_ASSERT_X(nullptr != currentJob, __FUNCTION__, "Job starting capturing must be valid");
 
+    // ensure that guiding is running before we start capturing
+    if (currentJob->getStepPipeline() & SchedulerJob::USE_GUIDE && getGuidingStatus() != GUIDE_GUIDING)
+    {
+        // guiding should run, but it doesn't. So start guiding first
+        currentJob->setStage(SchedulerJob::STAGE_GUIDING);
+        startGuiding();
+        return;
+    }
+
+
     captureInterface->setProperty("targetName", currentJob->getName().replace(' ', ""));
 
     QString url = currentJob->getSequenceFile().toLocalFile();
