@@ -4739,6 +4739,10 @@ void Capture::setAlignStatus(AlignState state)
 
 void Capture::setGuideStatus(GuideState state)
 {
+    if (state != guideState)
+        qCDebug(KSTARS_EKOS_CAPTURE) << "Guiding state changed from" << getGuideStatusString(guideState)
+                                     << "to" << getGuideStatusString(state);
+
     switch (state)
     {
         case GUIDE_IDLE:
@@ -4786,7 +4790,10 @@ void Capture::setGuideStatus(GuideState state)
             else
             {
                 appendLogText(i18n("Dither complete."));
-                resumeCapture();
+                qCInfo(KSTARS_EKOS_CAPTURE) << "Dither complete, capture state" << getCaptureStatusString(m_State);
+                // resume only if nothing happened during dithering
+                if (m_State == CAPTURE_DITHERING)
+                    resumeCapture();
             }
             break;
 
