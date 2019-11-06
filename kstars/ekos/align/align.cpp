@@ -3783,6 +3783,24 @@ void Align::processNumber(INumberVectorProperty *nvp)
             {
                 qCDebug(KSTARS_EKOS_ALIGN) << "Mount slew running.";
                 m_wasSlewStarted = true;
+
+                if (state == ALIGN_PROGRESS)
+                {
+                    // whoops, mount slews during alignment
+                    appendLogText(i18n("Slew detected, aborting solving..."));
+                    abort();
+                    // reset the state to busy so that solving restarts after slewing finishes
+                    loadSlewState = IPS_BUSY;
+                    // if mount model is running, retry the current alignment point
+                    if (mountModelRunning)
+                    {
+                        appendLogText(i18n("Restarting alignment point %1", currentAlignmentPoint+1));
+                        if (currentAlignmentPoint > 0)
+                            currentAlignmentPoint--;
+                    }
+
+                    state = ALIGN_SLEWING;
+                }
             }
             break;
 
