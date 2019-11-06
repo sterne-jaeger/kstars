@@ -3715,10 +3715,12 @@ void Align::processNumber(INumberVectorProperty *nvp)
                     break;
 
                     case ALIGN_SLEWING:
-                        // If mount has not started slewing yet, then skip
-                        qCDebug(KSTARS_EKOS_ALIGN) << "Mount slew planned, but not started slewing yet...";
                         if (m_wasSlewStarted == false)
+                        {
+                            // If mount has not started slewing yet, then skip
+                            qCDebug(KSTARS_EKOS_ALIGN) << "Mount slew planned, but not started slewing yet...";
                             break;
+                        }
 
                         qCDebug(KSTARS_EKOS_ALIGN) << "Mount slew completed.";
                         m_wasSlewStarted = false;
