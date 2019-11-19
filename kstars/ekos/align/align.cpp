@@ -2030,6 +2030,7 @@ void Align::setTelescope(ISD::GDInterface *newTelescope)
     currentTelescope->disconnect(this);
 
     connect(currentTelescope, &ISD::GDInterface::numberUpdated, this, &Ekos::Align::processNumber, Qt::UniqueConnection);
+    connect(currentTelescope, &ISD::GDInterface::switchUpdated, this, &Ekos::Align::processSwitch, Qt::UniqueConnection);
     connect(currentTelescope, &ISD::GDInterface::Disconnected, this, [this]()
     {
         m_isRateSynced = false;
@@ -3599,17 +3600,21 @@ void Align::processSwitch(ISwitchVectorProperty *svp)
             domeReady = true;
             // trigger process number for mount so that it proceeds with normal workflow since
             // it was stopped by dome not being ready
-            INumberVectorProperty *nvp = nullptr;
-
-            if (currentTelescope->isJ2000())
-                nvp = currentTelescope->getBaseDevice()->getNumber("EQUATORIAL_COORD");
-            else
-                nvp = currentTelescope->getBaseDevice()->getNumber("EQUATORIAL_EOD_COORD");
-
-            if (nvp)
-                processNumber(nvp);
+            handleMountStatus();
         }
-    }
+    } else if ((!strcmp(svp->name, "TELESCOPE_MOTION_NS") || !strcmp(svp->name, "TELESCOPE_MOTION_WE")))
+        switch (svp->s) {
+        case IPS_BUSY:
+            // react upon mount motion
+            handleMountMotion();
+            m_wasSlewStarted = true;
+            break;
+        default:
+            qCDebug(KSTARS_EKOS_ALIGN) << "Mount motion finished.";
+            handleMountStatus();
+            break;
+        }
+
 }
 
 void Align::processNumber(INumberVectorProperty *nvp)
@@ -3715,6 +3720,7 @@ void Align::processNumber(INumberVectorProperty *nvp)
                     break;
 
                     case ALIGN_SLEWING:
+
                         if (m_wasSlewStarted == false)
                         {
                             // If mount has not started slewing yet, then skip
@@ -3784,23 +3790,7 @@ void Align::processNumber(INumberVectorProperty *nvp)
                 qCDebug(KSTARS_EKOS_ALIGN) << "Mount slew running.";
                 m_wasSlewStarted = true;
 
-                if (state == ALIGN_PROGRESS)
-                {
-                    // whoops, mount slews during alignment
-                    appendLogText(i18n("Slew detected, aborting solving..."));
-                    abort();
-                    // reset the state to busy so that solving restarts after slewing finishes
-                    loadSlewState = IPS_BUSY;
-                    // if mount model is running, retry the current alignment point
-                    if (mountModelRunning)
-                    {
-                        appendLogText(i18n("Restarting alignment point %1", currentAlignmentPoint+1));
-                        if (currentAlignmentPoint > 0)
-                            currentAlignmentPoint--;
-                    }
-
-                    state = ALIGN_SLEWING;
-                }
+                handleMountMotion();
             }
             break;
 
@@ -3977,6 +3967,41 @@ void Align::processNumber(INumberVectorProperty *nvp)
     //if (!strcmp(coord->name, "TELESCOPE_INFO"))
     //syncTelescopeInfo();
 }
+
+void Align::handleMountMotion()
+{
+    if (state == ALIGN_PROGRESS)
+    {
+        // whoops, mount slews during alignment
+        appendLogText(i18n("Slew detected, aborting solving..."));
+        abort();
+        // reset the state to busy so that solving restarts after slewing finishes
+        loadSlewState = IPS_BUSY;
+        // if mount model is running, retry the current alignment point
+        if (mountModelRunning)
+        {
+            appendLogText(i18n("Restarting alignment point %1", currentAlignmentPoint+1));
+            if (currentAlignmentPoint > 0)
+                currentAlignmentPoint--;
+        }
+
+        state = ALIGN_SLEWING;
+    }
+}
+
+void Align::handleMountStatus()
+{
+    INumberVectorProperty *nvp = nullptr;
+
+    if (currentTelescope->isJ2000())
+        nvp = currentTelescope->getBaseDevice()->getNumber("EQUATORIAL_COORD");
+    else
+        nvp = currentTelescope->getBaseDevice()->getNumber("EQUATORIAL_EOD_COORD");
+
+    if (nvp)
+        processNumber(nvp);
+}
+
 
 void Align::executeGOTO()
 {
