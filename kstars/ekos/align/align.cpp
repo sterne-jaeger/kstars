@@ -190,6 +190,7 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
             ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
             if (targetChip->isCapturing())
             {
+                appendLogText(i18n("Capturing still running, Retrying in %1 seconds...", m_CaptureTimer.interval()/500));
                 targetChip->abortExposure();
                 m_CaptureTimer.start( m_CaptureTimer.interval() * 2);
             }
@@ -3498,6 +3499,7 @@ void Align::solverFailed()
 
 void Align::abort()
 {
+    m_CaptureTimer.stop();
     parser->stopSolver();
     pi->stopAnimation();
     stopB->setEnabled(false);
