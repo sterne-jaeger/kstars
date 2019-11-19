@@ -54,6 +54,7 @@
 
 #define PAH_CUTOFF_FOV            10 // Minimum FOV width in arcminutes for PAH to work
 #define MAXIMUM_SOLVER_ITERATIONS 10
+#define CAPTURE_RETRY_DELAY       10000
 
 #define AL_FORMAT_VERSION 1.0
 
@@ -176,7 +177,7 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
     });
 
     m_CaptureTimer.setSingleShot(true);
-    m_CaptureTimer.setInterval(10000);
+    m_CaptureTimer.setInterval(CAPTURE_RETRY_DELAY);
     connect(&m_CaptureTimer, &QTimer::timeout, [&]()
     {
         if (m_CaptureTimeoutCounter++ > 3)
@@ -2743,15 +2744,15 @@ bool Align::captureAndSolve()
 
     if (focusState >= FOCUS_PROGRESS)
     {
-        appendLogText(i18n("Cannot capture while focus module is busy. Retrying in 10 seconds..."));
-        m_CaptureTimer.start();
+        appendLogText(i18n("Cannot capture while focus module is busy. Retrying in %1 seconds...", CAPTURE_RETRY_DELAY/1000));
+        m_CaptureTimer.start(CAPTURE_RETRY_DELAY);
         return false;
     }
 
     if (targetChip->isCapturing())
     {
-        appendLogText(i18n("Cannot capture while CCD exposure is in progress. Retrying in 10 seconds..."));
-        m_CaptureTimer.start();
+        appendLogText(i18n("Cannot capture while CCD exposure is in progress. Retrying in %1 seconds...", CAPTURE_RETRY_DELAY/1000));
+        m_CaptureTimer.start(CAPTURE_RETRY_DELAY);
         return false;
     }
 
@@ -3741,7 +3742,7 @@ void Align::processNumber(INumberVectorProperty *nvp)
 
                             if (delaySpin->value() >= DELAY_THRESHOLD_NOTIFY)
                                 appendLogText(i18n("Settling..."));
-                            QTimer::singleShot(delaySpin->value(), this, &Ekos::Align::captureAndSolve);
+                            m_CaptureTimer.start(delaySpin->value());
                             return;
                         }
                         else if (differentialSlewingActivated)
@@ -3769,7 +3770,7 @@ void Align::processNumber(INumberVectorProperty *nvp)
 
                             if (delaySpin->value() >= DELAY_THRESHOLD_NOTIFY)
                                 appendLogText(i18n("Settling..."));
-                            QTimer::singleShot(delaySpin->value(), this, &Ekos::Align::captureAndSolve);
+                            m_CaptureTimer.start(delaySpin->value());
                             return;
                         }
                         break;
@@ -3845,7 +3846,7 @@ void Align::processNumber(INumberVectorProperty *nvp)
 
                     if (delaySpin->value() >= DELAY_THRESHOLD_NOTIFY)
                         appendLogText(i18n("Settling..."));
-                    QTimer::singleShot(delaySpin->value(), this, &Ekos::Align::captureAndSolve);
+                    m_CaptureTimer.start(delaySpin->value());
                 }
                 // If for some reason we didn't stop, let's stop if we get too far
                 else if (deltaAngle > PAHRotationSpin->value() * 1.25)
@@ -3878,7 +3879,7 @@ void Align::processNumber(INumberVectorProperty *nvp)
 
                     if (delaySpin->value() >= DELAY_THRESHOLD_NOTIFY)
                         appendLogText(i18n("Settling..."));
-                    QTimer::singleShot(delaySpin->value(), this, &Ekos::Align::captureAndSolve);
+                    m_CaptureTimer.start(delaySpin->value());
                 }
                 // If for some reason we didn't stop, let's stop if we get too far
                 else if (deltaAngle > PAHRotationSpin->value() * 1.25)
@@ -4251,7 +4252,7 @@ void Align::measureAltError()
             altStage = ALT_FIRST_TARGET;
             if (delaySpin->value() >= DELAY_THRESHOLD_NOTIFY)
                 appendLogText(i18n("Settling..."));
-            QTimer::singleShot(delaySpin->value(), this, &Ekos::Align::captureAndSolve);
+            m_CaptureTimer.start(delaySpin->value());
             break;
 
         case ALT_FIRST_TARGET:
@@ -4289,7 +4290,7 @@ void Align::measureAltError()
 
             if (delaySpin->value() >= DELAY_THRESHOLD_NOTIFY)
                 appendLogText(i18n("Settling..."));
-            QTimer::singleShot(delaySpin->value(), this, &Ekos::Align::captureAndSolve);
+            m_CaptureTimer.start(delaySpin->value());
             break;
 
         case ALT_FINISHED:
@@ -5057,7 +5058,7 @@ void Align::setCaptureStatus(CaptureState newState)
                 qCDebug(KSTARS_EKOS_ALIGN) << "Post meridian flip mount model reset" << (mountModelReset ? "successful." : "failed.");
             }
 
-            QTimer::singleShot(Options::settlingTime(), this, &Ekos::Align::captureAndSolve);
+            m_CaptureTimer.start(Options::settlingTime());
             break;
 
         default:
@@ -5372,7 +5373,7 @@ void Align::setPAHSlewDone()
     }
     if (delaySpin->value() >= DELAY_THRESHOLD_NOTIFY)
         appendLogText(i18n("Settling..."));
-    QTimer::singleShot(delaySpin->value(), this, &Ekos::Align::captureAndSolve);
+    m_CaptureTimer.start(delaySpin->value());
 }
 
 
