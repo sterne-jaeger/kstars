@@ -475,9 +475,6 @@ void Capture::toggleSequence()
         startB->setToolTip(i18n("Stop Sequence"));
         pauseB->setEnabled(true);
 
-        m_State = CAPTURE_CAPTURING;
-        emit newStatus(Ekos::CAPTURE_CAPTURING);
-
         appendLogText(i18n("Sequence resumed."));
 
         // Call from where ever we have left of when we paused
@@ -1561,12 +1558,16 @@ bool Capture::setCaptureComplete()
 
     //This determines the time since the image started downloading
     //Then it gets the estimated time left and displays it in the log.
-    double currentDownloadTime = downloadTimer.elapsed() / 1000.0;
-    downloadTimes << currentDownloadTime;
-    QString dLTimeString = QString::number(currentDownloadTime, 'd', 2);
-    QString estimatedTimeString = QString::number(getEstimatedDownloadTime(), 'd', 2);
-    appendLogText(i18n("Download Time: %1 s, New Download Time Estimate: %2 s.", dLTimeString, estimatedTimeString));
-
+    //In order to avoid counting the pausing time, we only do this
+    //when this function is not called as pause function
+    if (m_State != CAPTURE_PAUSED)
+    {
+        double currentDownloadTime = downloadTimer.elapsed() / 1000.0;
+        downloadTimes << currentDownloadTime;
+        QString dLTimeString = QString::number(currentDownloadTime, 'd', 2);
+        QString estimatedTimeString = QString::number(getEstimatedDownloadTime(), 'd', 2);
+        appendLogText(i18n("Download Time: %1 s, New Download Time Estimate: %2 s.", dLTimeString, estimatedTimeString));
+    }
     // In case we're framing, let's start
     if (m_isLooping)
     {
