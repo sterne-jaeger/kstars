@@ -371,7 +371,7 @@ class Mount : public QWidget, public Ui::Mount
          */
         void setMeridianFlipValues(bool activate, double hours);
 
-    private slots:
+private slots:
 
         /**
          * @brief registerNewModule Register an Ekos module as it arrives via DBus
@@ -401,6 +401,14 @@ class Mount : public QWidget, public Ui::Mount
         void syncGPS();
         MeridianFlipStatus m_MFStatus = FLIP_NONE;
         void setMeridianFlipStatus(MeridianFlipStatus status);
+        QString meridianFlipStatusString(MeridianFlipStatus status);
+        QString pierSideStateString();
+
+        // A meridian flip requires a slew of 180 degrees in the hour angle axis so will take at least
+        // the time for that, currently set to 30 seconds
+        QDateTime minMeridianFlipEndTime;
+        int minMeridianFlipDurationSecs = 30;
+        double flipDelayHrs = 0.0;      // delays the next flip attempt if it fails
 
         QPointer<QDBusInterface> captureInterface { nullptr };
 
