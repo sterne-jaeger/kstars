@@ -2497,8 +2497,11 @@ void Guide::setAxisDelta(double ra, double de)
 {
     //If PHD2 starts guiding because somebody pusted the button remotely, we want to set the state to guiding.
     //If guide pulses start coming in, it must be guiding.
-    if(guiderType == GUIDE_PHD2 && state != GUIDE_GUIDING)
-        setStatus(GUIDE_GUIDING);
+    // 2020-04-09 sterne-jaeger: It might happen that after suspending a last guiding step is executed in PHD2
+    //                           Therefore we should NOT assume that a (single) guiding step means that we are
+    //                           in the guiding mode.
+    // if(guiderType == GUIDE_PHD2 && state != GUIDE_GUIDING)
+    //     setStatus(GUIDE_GUIDING);
 
     // Time since timer started.
     double key = guideTimer.elapsed() / 1000.0;
