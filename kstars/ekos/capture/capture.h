@@ -942,8 +942,8 @@ class Capture : public QWidget, public Ui::Capture
         std::unique_ptr<RotatorSettings> rotatorSettings;
 
         // How many images to capture before dithering operation is executed?
-        uint8_t ditherCounter { 0 };
-        uint8_t inSequenceFocusCounter { 0 };
+        uint ditherCounter { 0 };
+        uint inSequenceFocusCounter { 0 };
 
         std::unique_ptr<CustomProperties> customPropertiesDialog;
 

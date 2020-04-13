@@ -268,10 +268,10 @@ Capture::Capture()
     });
 
     // 8. Refocus Every Value
-    refocusEveryN->setValue(Options::refocusEveryN());
+    refocusEveryN->setValue(static_cast<int>(Options::refocusEveryN()));
     connect(refocusEveryN, &QDoubleSpinBox::editingFinished, [ = ]()
     {
-        Options::setRefocusEveryN(refocusEveryN->value());
+        Options::setRefocusEveryN(static_cast<uint>(refocusEveryN->value()));
     });
 
     // 9. File settings: filter name
@@ -375,7 +375,7 @@ Capture::Capture()
     // Keep track of TARGET transfer format when changing CCDs (FITS or NATIVE). Actual format is not changed until capture
     connect(
         transferFormatCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this,
-        [&](int index)
+        [&](uint index)
     {
         if (currentCCD)
             currentCCD->setTargetTransferFormat(static_cast<ISD::CCD::TransferFormat>(index));
@@ -988,7 +988,7 @@ void Capture::checkCCD(int ccdNum)
 
             //transferFormatCombo->setCurrentIndex(currentCCD->getTargetTransferFormat());
             // 2018-05-07 JM: Set value to the value in options
-            transferFormatCombo->setCurrentIndex(Options::captureFormatIndex());
+            transferFormatCombo->setCurrentIndex(static_cast<int>(Options::captureFormatIndex()));
 
             uint16_t w, h;
             uint8_t bbp {8};
@@ -997,7 +997,7 @@ void Capture::checkCCD(int ccdNum)
             bool isModelInDB = isModelinDSLRInfo(QString(currentCCD->getDeviceName()));
             // If rc == true, then the property has been defined by the driver already
             // Only then we check if the pixels are zero
-            if (rc == true && (pixelX == 0 || pixelY == 0 || isModelInDB == false))
+            if (rc == true && (pixelX == 0.0 || pixelY == 0.0 || isModelInDB == false))
             {
                 // If model is already in database, no need to show dialog
                 // The zeros above are the initial packets so we can safely ignore them
@@ -1118,15 +1118,15 @@ void Capture::updateFrameProperties(int reset)
             return;
         }
 
-        if (step == 0)
+        if (step == 0.0)
             xstep = static_cast<int>(max * 0.05);
         else
-            xstep = step;
+            xstep = static_cast<int>(step);
 
         if (min >= 0 && max > 0)
         {
-            frameWIN->setMinimum(min);
-            frameWIN->setMaximum(max);
+            frameWIN->setMinimum(static_cast<int>(min));
+            frameWIN->setMaximum(static_cast<int>(max));
             frameWIN->setSingleStep(xstep);
         }
     }
@@ -1141,15 +1141,15 @@ void Capture::updateFrameProperties(int reset)
             return;
         }
 
-        if (step == 0)
+        if (step == 0.0)
             ystep = static_cast<int>(max * 0.05);
         else
-            ystep = step;
+            ystep = static_cast<int>(step);
 
         if (min >= 0 && max > 0)
         {
-            frameHIN->setMinimum(min);
-            frameHIN->setMaximum(max);
+            frameHIN->setMinimum(static_cast<int>(min));
+            frameHIN->setMaximum(static_cast<int>(max));
             frameHIN->setSingleStep(ystep);
         }
     }
@@ -1164,14 +1164,14 @@ void Capture::updateFrameProperties(int reset)
             return;
         }
 
-        if (step == 0)
+        if (step == 0.0)
             step = xstep;
 
         if (min >= 0 && max > 0)
         {
-            frameXIN->setMinimum(min);
-            frameXIN->setMaximum(max);
-            frameXIN->setSingleStep(step);
+            frameXIN->setMinimum(static_cast<int>(min));
+            frameXIN->setMaximum(static_cast<int>(max));
+            frameXIN->setSingleStep(static_cast<int>(step));
         }
     }
     else
@@ -1185,14 +1185,14 @@ void Capture::updateFrameProperties(int reset)
             return;
         }
 
-        if (step == 0)
+        if (step == 0.0)
             step = ystep;
 
         if (min >= 0 && max > 0)
         {
-            frameYIN->setMinimum(min);
-            frameYIN->setMaximum(max);
-            frameYIN->setSingleStep(step);
+            frameYIN->setMinimum(static_cast<int>(min));
+            frameYIN->setMaximum(static_cast<int>(max));
+            frameYIN->setSingleStep(static_cast<int>(step));
         }
     }
     else
@@ -1544,8 +1544,8 @@ void Capture::newFITS(IBLOB * bp)
             {
                 FITSView * currentImage = targetChip->getImageView(FITS_NORMAL);
                 FITSData * darkData     = DarkLibrary::Instance()->getDarkFrame(targetChip, activeJob->getExposure());
-                uint16_t offsetX       = activeJob->getSubX() / activeJob->getXBin();
-                uint16_t offsetY       = activeJob->getSubY() / activeJob->getYBin();
+                uint16_t offsetX       = static_cast<uint16_t>(activeJob->getSubX() / activeJob->getXBin());
+                uint16_t offsetY       = static_cast<uint16_t>(activeJob->getSubY() / activeJob->getYBin());
 
                 connect(DarkLibrary::Instance(), &DarkLibrary::darkFrameCompleted, this, [&](bool completed)
                 {
@@ -1978,7 +1978,7 @@ bool Capture::startFocusIfRequired()
         if (currentCCD->isLooping())
             targetChip->abortExposure();
 
-        if (HFRPixels->value() == 0)
+        if (HFRPixels->value() == 0.0)
         {
             qCDebug(KSTARS_EKOS_CAPTURE) << "Capture is triggering autofocus on line " << __LINE__;
             emit checkFocus(0.1);
@@ -2098,7 +2098,7 @@ void Capture::captureImage()
     {
         int remaining = activeJob->getCount() - activeJob->getCompleted();
         if (remaining > 1)
-            currentCCD->setExposureLoopCount(remaining);
+            currentCCD->setExposureLoopCount(static_cast<uint>(remaining));
     }
 
     connect(currentCCD, &ISD::CCD::BLOBUpdated, this, &Ekos::Capture::newFITS, Qt::UniqueConnection);
@@ -2172,7 +2172,7 @@ void Capture::captureImage()
         {
             appendLogText(i18n("Capturing %1-second %2 image...", QString("%L1").arg(activeJob->getExposure(), 0, 'f', 3),
                                activeJob->getFilterName()));
-            captureTimeout.start(activeJob->getExposure() * 1000 + CAPTURE_TIMEOUT_THRESHOLD);
+            captureTimeout.start(static_cast<int>(activeJob->getExposure()) * 1000 + CAPTURE_TIMEOUT_THRESHOLD);
             if (activeJob->isPreview() == false)
             {
                 int index = jobs.indexOf(activeJob);
@@ -3322,7 +3322,7 @@ void Capture::setGuideDeviation(double delta_ra, double delta_dec)
     }
 
     // We don't enforce limit on previews
-    if (guideDeviationCheck->isChecked() == false || (activeJob && (activeJob->isPreview() || activeJob->getExposeLeft() == 0)))
+    if (guideDeviationCheck->isChecked() == false || (activeJob && (activeJob->isPreview() || activeJob->getExposeLeft() == 0.0)))
         return;
 
     double deviation_rms = sqrt( (delta_ra * delta_ra + delta_dec * delta_dec) / 2.0);
@@ -3801,7 +3801,7 @@ bool Capture::loadSequenceQueue(const QString &fileURL)
 
         if (root)
         {
-            double sqVersion = cLocale.toFloat(findXMLAttValu(root, "version"));
+            double sqVersion = cLocale.toDouble(findXMLAttValu(root, "version"));
             if (sqVersion < SQ_COMPAT_VERSION)
             {
                 appendLogText(i18n("Deprecated sequence file format version %1. Please construct a new sequence file.",
@@ -4646,8 +4646,8 @@ double Capture::getJobExposureDuration(int id)
 
 int Capture::getJobRemainingTime(SequenceJob * job)
 {
-    int remaining = (job->getExposure() + getEstimatedDownloadTime() + job->getDelay() / 1000) *
-                    (job->getCount() - job->getCompleted());
+    int remaining = static_cast<int>((job->getExposure() + getEstimatedDownloadTime() + job->getDelay() / 1000) *
+                                     (job->getCount() - job->getCompleted()));
 
     if (job->getStatus() == SequenceJob::JOB_BUSY)
         remaining += job->getExposeLeft() + getEstimatedDownloadTime();
@@ -4657,7 +4657,7 @@ int Capture::getJobRemainingTime(SequenceJob * job)
 
 int Capture::getOverallRemainingTime()
 {
-    double remaining = 0;
+    int remaining = 0;
 
     foreach (SequenceJob * job, jobs)
         remaining += getJobRemainingTime(job);
@@ -5119,7 +5119,7 @@ double Capture::setCurrentADU(double value)
             llsq(ExpRaw, ADURaw, a, b);
 
             // If we have valid results, let's calculate next exposure
-            if (a != 0)
+            if (a != 0.0)
             {
                 nextExposure = (targetADU - b) / a;
                 // If we get invalid value, let's just proceed iteratively
@@ -5129,7 +5129,7 @@ double Capture::setCurrentADU(double value)
         }
     }
 
-    if (nextExposure == 0)
+    if (nextExposure == 0.0)
     {
         if (value < targetADU)
             nextExposure = activeJob->getExposure() * 1.25;
@@ -5278,8 +5278,8 @@ void Capture::openCalibrationDialog()
 
         case DURATION_ADU:
             calibrationOptions.ADUC->setChecked(true);
-            calibrationOptions.ADUValue->setValue(targetADU);
-            calibrationOptions.ADUTolerance->setValue(targetADUTolerance);
+            calibrationOptions.ADUValue->setValue(static_cast<int>(std::round(targetADU)));
+            calibrationOptions.ADUTolerance->setValue(static_cast<int>(std::round(targetADUTolerance)));
             break;
     }
 
@@ -5332,8 +5332,8 @@ void Capture::openCalibrationDialog()
         Options::setCalibrationFlatDurationIndex(flatFieldDuration);
         Options::setCalibrationWallAz(wallCoord.az().Degrees());
         Options::setCalibrationWallAlt(wallCoord.alt().Degrees());
-        Options::setCalibrationADUValue(targetADU);
-        Options::setCalibrationADUValueTolerance(targetADUTolerance);
+        Options::setCalibrationADUValue(static_cast<uint>(std::round(targetADU)));
+        Options::setCalibrationADUValueTolerance(static_cast<uint>(std::round(targetADUTolerance)));
     }
 }
 
@@ -6327,9 +6327,9 @@ void Capture::startRefocusTimer(bool forced)
     if (refocusEveryNCheck->isChecked())
     {
         // How much time passed since we last started the time
-        uint32_t elapsedSecs = refocusEveryNTimer.elapsed() / 1000;
+        long elapsedSecs = refocusEveryNTimer.elapsed() / 1000;
         // How many seconds do we wait for between focusing (60 mins ==> 3600 secs)
-        uint32_t totalSecs   = refocusEveryN->value() * 60;
+        int totalSecs   = refocusEveryN->value() * 60;
 
         if (!refocusEveryNTimer.isValid() || forced)
         {
@@ -6352,7 +6352,7 @@ void Capture::startRefocusTimer(bool forced)
 int Capture::getRefocusEveryNTimerElapsedSec()
 {
     /* If timer isn't valid, consider there is no focus to be done, that is, that focus was just done */
-    return refocusEveryNTimer.isValid() ? refocusEveryNTimer.elapsed() / 1000 : 0;
+    return refocusEveryNTimer.isValid() ? static_cast<int>(refocusEveryNTimer.elapsed() / 1000) : 0;
 }
 
 void Capture::setAlignResults(double orientation, double ra, double de, double pixscale)
@@ -6530,7 +6530,7 @@ void Capture::cullToDSLRLimits()
 
 void Capture::setCapturedFramesMap(const QString &signature, int count)
 {
-    capturedFramesMap[signature] = count;
+    capturedFramesMap[signature] = static_cast<ushort>(count);
     qCDebug(KSTARS_EKOS_CAPTURE) <<
                                  QString("Client module indicates that storage for '%1' has already %2 captures processed.").arg(signature).arg(count);
     // Scheduler's captured frame map overrides the progress option of the Capture module
@@ -6656,7 +6656,7 @@ void Capture::processCaptureTimeout()
         ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
         targetChip->abortExposure();
         targetChip->capture(exposureIN->value());
-        captureTimeout.start(exposureIN->value() * 1000 + CAPTURE_TIMEOUT_THRESHOLD);
+        captureTimeout.start(static_cast<int>(exposureIN->value() * 1000 + CAPTURE_TIMEOUT_THRESHOLD));
     };
 
     m_CaptureTimeoutCounter++;
@@ -6698,10 +6698,10 @@ void Capture::createDSLRDialog()
     connect(dslrInfoDialog.get(), &DSLRInfo::infoChanged, [this]()
     {
         addDSLRInfo(QString(currentCCD->getDeviceName()),
-                    dslrInfoDialog->sensorMaxWidth,
-                    dslrInfoDialog->sensorMaxHeight,
-                    dslrInfoDialog->sensorPixelW,
-                    dslrInfoDialog->sensorPixelH);
+                    static_cast<uint32_t>(dslrInfoDialog->sensorMaxWidth),
+                    static_cast<uint32_t>(dslrInfoDialog->sensorMaxHeight),
+                    static_cast<uint32_t>(dslrInfoDialog->sensorPixelW),
+                    static_cast<uint32_t>(dslrInfoDialog->sensorPixelH));
     });
 
     dslrInfoDialog->show();
