@@ -1446,6 +1446,10 @@ bool Capture::startNextExposure()
         // re-focus before next capture
         return false;
 
+    if (startDitherIfRequired())
+        // dither before next capture
+        return false;
+
     if (seqDelay > 0)
     {
         secondsLabel->setText(i18n("Waiting..."));
@@ -1640,6 +1644,8 @@ bool Capture::setCaptureComplete()
         activeJob->setCompleted(activeJob->getCompleted() + 1);
         /* Decrease the counter for in-sequence focusing */
         inSequenceFocusCounter--;
+        /* Decreate the counter for dithering */
+        ditherCounter--;
     }
 
     // Do not send new image if the image was stored on the server.
@@ -1791,31 +1797,9 @@ bool Capture::resumeSequence()
             emit resumeGuiding();
         }
 
-        // Dither either when guiding or IF Non-Guide either option is enabled
-        if ( (Options::ditherEnabled() || Options::ditherNoGuiding())
-                // 2017-09-20 Jasem: No need to dither after post meridian flip guiding
-                && meridianFlipStage != MF_GUIDING
-                // If CCD is looping, we cannot dither UNLESS a different camera and NOT a guide chip is doing the guiding for us.
-                && (currentCCD->isLooping() == false || guideChip == nullptr)
-                // We must be either in guide mode or if non-guide dither (via pulsing) is enabled
-                && (guideState == GUIDE_GUIDING || Options::ditherNoGuiding())
-                // Must be only done for light frames
-                && activeJob->getFrameType() == FRAME_LIGHT
-                // Check dither counter
-                && --ditherCounter == 0)
-        {
-            ditherCounter = Options::ditherFrames();
+        if (startDitherIfRequired() == true)
+            return true;
 
-            secondsLabel->setText(i18n("Dithering..."));
-
-            qCInfo(KSTARS_EKOS_CAPTURE) << "Dithering...";
-
-            if (currentCCD->isLooping())
-                targetChip->abortExposure();
-
-            m_State = CAPTURE_DITHERING;
-            emit newStatus(Ekos::CAPTURE_DITHERING);
-        }
 #if 0
         else if (isRefocus && activeJob->getFrameType() == FRAME_LIGHT)
         {
@@ -1972,6 +1956,40 @@ bool Capture::startFocusIfRequired()
 
     return false;
 }
+
+bool Capture::startDitherIfRequired()
+{
+    // Dither either when guiding or IF Non-Guide either option is enabled
+    if ( (Options::ditherEnabled() || Options::ditherNoGuiding())
+            // 2017-09-20 Jasem: No need to dither after post meridian flip guiding
+            && meridianFlipStage != MF_GUIDING
+            // If CCD is looping, we cannot dither UNLESS a different camera and NOT a guide chip is doing the guiding for us.
+            && (currentCCD->isLooping() == false || guideChip == nullptr)
+            // We must be either in guide mode or if non-guide dither (via pulsing) is enabled
+            && (guideState == GUIDE_GUIDING || Options::ditherNoGuiding())
+            // Must be only done for light frames
+            && activeJob->getFrameType() == FRAME_LIGHT
+            // Check dither counter
+            && ditherCounter <= 0)
+    {
+        ditherCounter = Options::ditherFrames();
+
+        secondsLabel->setText(i18n("Dithering..."));
+
+        qCInfo(KSTARS_EKOS_CAPTURE) << "Dithering...";
+
+        if (currentCCD->isLooping())
+            targetChip->abortExposure();
+
+        m_State = CAPTURE_DITHERING;
+        emit newStatus(Ekos::CAPTURE_DITHERING);
+        return true;
+    }
+
+    // no dithering required
+    return false;
+}
+
 
 void Capture::captureOne()
 {
@@ -5314,11 +5332,18 @@ IPState Capture::checkLightFrameAuxiliaryTasks()
         m_State = CAPTURE_FOCUSING;
         return IPS_BUSY;
     }
-
     if (guideState == GUIDE_SUSPENDED)
     {
         appendLogText(i18n("Autoguiding resumed."));
         emit resumeGuiding();
+        return IPS_BUSY;
+    }
+
+    // step 5: check if dithering is required
+    if (m_State == CAPTURE_DITHERING || startDitherIfRequired())
+    {
+        m_State = CAPTURE_DITHERING;
+        return IPS_BUSY;
     }
 
     calibrationStage = CAL_PRECAPTURE_COMPLETE;

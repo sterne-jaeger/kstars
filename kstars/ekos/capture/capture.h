@@ -915,6 +915,13 @@ class Capture : public QWidget, public Ui::Capture
 
         // How many images to capture before dithering operation is executed?
         uint ditherCounter { 0 };
+
+        /**
+         * @brief Check if it is time to start dithering
+         * @return true iff dithering has been started
+         */
+        bool startDitherIfRequired();
+
         uint inSequenceFocusCounter { 0 };
 
         std::unique_ptr<CustomProperties> customPropertiesDialog;
