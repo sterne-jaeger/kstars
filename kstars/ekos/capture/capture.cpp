@@ -3259,8 +3259,10 @@ void Capture::updatePreCaptureCalibrationStatus()
         return;
     else if (rc == IPS_BUSY)
     {
-        // Clear the label if we are neither executing a meridian flip nor re-focusing
-        if ((meridianFlipStage == MF_NONE || meridianFlipStage == MF_READY) && m_State != CAPTURE_FOCUSING)
+        // Clear the label if we are neither executing a meridian flip nor re-focusing nor dithering
+        // TODO: this seems to be unsystematic when we clear the seconds label
+        if ((meridianFlipStage == MF_NONE || meridianFlipStage == MF_READY) &&
+                m_State != CAPTURE_FOCUSING && m_State != CAPTURE_DITHERING)
             secondsLabel->clear();
         QTimer::singleShot(1000, this, &Ekos::Capture::updatePreCaptureCalibrationStatus);
         return;
@@ -4979,7 +4981,7 @@ void Capture::setGuideStatus(GuideState state)
             break;
 
         case GUIDE_DITHERING_SUCCESS:
-            qCInfo(KSTARS_EKOS_CAPTURE) << "Dithering succeeded, capture state" << getCaptureStatusString(m_State);
+            appendLogText(i18n("Dithering succeeded."));
             // do nothing if something happened during dithering
             if (m_State != CAPTURE_DITHERING)
                 break;
@@ -4988,6 +4990,7 @@ void Capture::setGuideStatus(GuideState state)
             {
                 // N.B. Do NOT convert to i18np since guidingRate is DOUBLE value (e.g. 1.36) so we always use plural with that.
                 appendLogText(i18n("Dither complete. Resuming capture in %1 seconds...", Options::guidingSettle()));
+                secondsLabel->clear();
                 QTimer::singleShot(Options::guidingSettle() * 1000, this, &Ekos::Capture::resumeCapture);
             }
             else
