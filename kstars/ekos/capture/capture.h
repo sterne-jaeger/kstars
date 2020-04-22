@@ -126,7 +126,7 @@ class Capture : public QWidget, public Ui::Capture
             ADU_POLYNOMIAL
         } ADUAlgorithm;
 
-        typedef bool (Capture::*PauseFunctionPointer)();
+        typedef IPState (Capture::*PauseFunctionPointer)();
 
         Capture();
         ~Capture();
@@ -566,7 +566,7 @@ class Capture : public QWidget, public Ui::Capture
         /**
              * @brief resumeCapture Resume capture after dither and/or focusing processes are complete.
              */
-        bool resumeCapture();
+        IPState resumeCapture();
 
         /**
              * @brief updateCCDTemperature Update CCD temperature in capture module.
@@ -691,7 +691,7 @@ class Capture : public QWidget, public Ui::Capture
         void sendNewImage(const QString &filename, ISD::CCDChip *myChip);
 
         // Capture
-        bool setCaptureComplete();
+        IPState setCaptureComplete();
 
         // post capture script
         void postScriptFinished(int exitCode, QProcess::ExitStatus status);
@@ -744,8 +744,8 @@ class Capture : public QWidget, public Ui::Capture
 
     private:
         void setBusy(bool enable);
-        bool resumeSequence();
-        bool startNextExposure();
+        IPState resumeSequence();
+        IPState startNextExposure();
         // reset = 0 --> Do not reset
         // reset = 1 --> Full reset
         // reset = 2 --> Only update limits if needed

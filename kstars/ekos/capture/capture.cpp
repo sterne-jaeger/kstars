@@ -1438,22 +1438,22 @@ void Capture::syncFilterInfo()
     }
 }
 
-bool Capture::startNextExposure()
+IPState Capture::startNextExposure()
 {
     // check if pausing has been requested
     if (checkPausing() == true)
     {
         pauseFunction = &Capture::startNextExposure;
-        return false;
+        return IPS_BUSY;
     }
 
     if (checkMeridianFlip())
         // execute flip before next capture
-        return false;
+        return IPS_BUSY;
 
     if (startFocusIfRequired())
         // re-focus before next capture
-        return false;
+        return IPS_BUSY;
 
     if (seqDelay > 0)
     {
@@ -1464,7 +1464,7 @@ bool Capture::startNextExposure()
 
     seqTimer->start(seqDelay);
 
-    return true;
+    return IPS_OK;
 }
 
 void Capture::newFITS(IBLOB * bp)
@@ -1574,7 +1574,7 @@ void Capture::newFITS(IBLOB * bp)
     setCaptureComplete();
 }
 
-bool Capture::setCaptureComplete()
+IPState Capture::setCaptureComplete()
 {
     captureTimeout.stop();
     m_CaptureTimeoutCounter = 0;
@@ -1587,7 +1587,7 @@ bool Capture::setCaptureComplete()
         sendNewImage(blobFilename, blobChip);
         secondsLabel->setText(i18n("Framing..."));
         activeJob->capture(darkSubCheck->isChecked() ? true : false);
-        return true;
+        return IPS_OK;
     }
 
     if (currentCCD->isLooping() == false)
@@ -1633,14 +1633,14 @@ bool Capture::setCaptureComplete()
 
         m_State = CAPTURE_IDLE;
         emit newStatus(Ekos::CAPTURE_IDLE);
-        return true;
+        return IPS_OK;
     }
 
     // check if pausing has been requested
     if (checkPausing() == true)
     {
         pauseFunction = &Capture::setCaptureComplete;
-        return false;
+        return IPS_BUSY;
     }
 
     if (! activeJob->isPreview())
@@ -1663,7 +1663,7 @@ bool Capture::setCaptureComplete()
     if (activeJob->getFrameType() != FRAME_LIGHT)
     {
         if (processPostCaptureCalibrationStage() == false)
-            return true;
+            return IPS_OK;
 
         if (calibrationStage == CAL_CALIBRATION_COMPLETE)
             calibrationStage = CAL_CAPTURING;
@@ -1684,14 +1684,14 @@ bool Capture::setCaptureComplete()
     {
         postCaptureScript.start(activeJob->getPostCaptureScript());
         appendLogText(i18n("Executing post capture script %1", activeJob->getPostCaptureScript()));
-        return true;
+        return IPS_OK;
     }
 
     // if we're done
     if (activeJob->getCount() <= activeJob->getCompleted())
     {
         processJobCompletion();
-        return true;
+        return IPS_OK;
     }
 
     return resumeSequence();
@@ -1713,7 +1713,7 @@ void Capture::processJobCompletion()
     stop();
 
     // Check if there are more pending jobs and execute them
-    if (resumeSequence())
+    if (resumeSequence() == IPS_OK)
         return;
     // Otherwise, we're done. We park if required and resume guiding if no parking is done and autoguiding was engaged before.
     else
@@ -1734,14 +1734,14 @@ void Capture::processJobCompletion()
     }
 }
 
-bool Capture::resumeSequence()
+IPState Capture::resumeSequence()
 {
     if (m_State == CAPTURE_PAUSED)
     {
         pauseFunction = &Capture::resumeSequence;
         appendLogText(i18n("Sequence paused."));
         secondsLabel->setText(i18n("Paused..."));
-        return false;
+        return IPS_BUSY;
     }
 
     // If no job is active, we have to find if there are more pending jobs in the queue
@@ -1770,12 +1770,12 @@ bool Capture::resumeSequence()
                 emit resumeGuiding();
             }
 
-            return true;
+            return IPS_OK;
         }
         else
         {
             qCDebug(KSTARS_EKOS_CAPTURE) << "All capture jobs complete.";
-            return false;
+            return IPS_BUSY;
         }
     }
     // Otherwise, let's prepare for next exposure after making sure in-sequence focus and dithering are complete if applicable.
@@ -1902,7 +1902,7 @@ bool Capture::resumeSequence()
         }
     }
 
-    return true;
+    return IPS_OK;
 }
 
 bool Capture::startFocusIfRequired()
@@ -2207,14 +2207,14 @@ void Capture::captureImage()
     }
 }
 
-bool Capture::resumeCapture()
+IPState Capture::resumeCapture()
 {
     if (m_State == CAPTURE_PAUSED)
     {
         pauseFunction = &Capture::resumeCapture;
         appendLogText(i18n("Sequence paused."));
         secondsLabel->setText(i18n("Paused..."));
-        return false;
+        return IPS_OK;
     }
 
 #if 0
@@ -2254,11 +2254,11 @@ bool Capture::resumeCapture()
 #endif
 
     if (m_State == CAPTURE_DITHERING && m_AutoFocusReady && startFocusIfRequired())
-        return true;
+        return IPS_OK;
 
     startNextExposure();
 
-    return true;
+    return IPS_OK;
 }
 
 /*******************************************************************************/
