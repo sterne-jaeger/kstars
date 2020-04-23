@@ -1440,21 +1440,37 @@ void Capture::syncFilterInfo()
 
 IPState Capture::startNextExposure()
 {
-    // check if pausing has been requested
+    // step 1: check if pausing has been requested
     if (checkPausing() == true)
     {
         pauseFunction = &Capture::startNextExposure;
         return IPS_BUSY;
     }
 
+    // step 2: check if meridian flip already is already running
+    if (checkMeridianFlipRunning())
+        return IPS_BUSY;
+
+    // step 3: check if meridian flip is required
     if (checkMeridianFlip())
         // execute flip before next capture
         return IPS_BUSY;
 
-    if (startFocusIfRequired())
+    // step 4: check if re-focusing is required
+    if (m_State == CAPTURE_FOCUSING || startFocusIfRequired())
+    {
         // re-focus before next capture
+        m_State = CAPTURE_FOCUSING;
         return IPS_BUSY;
+    }
 
+    if (guideState == GUIDE_SUSPENDED)
+    {
+        appendLogText(i18n("Autoguiding resumed."));
+        emit resumeGuiding();
+    }
+
+    calibrationStage = CAL_PRECAPTURE_COMPLETE;
     if (seqDelay > 0)
     {
         secondsLabel->setText(i18n("Waiting..."));
@@ -1787,7 +1803,7 @@ IPState Capture::resumeSequence()
         isTemperatureDeltaCheckActive = (m_AutoFocusReady && temperatureDeltaCheck->isChecked());
 
         // Reset HFR pixels to file value after meridian flip
-        if (isInSequenceFocus && meridianFlipStage != MF_NONE && meridianFlipStage != MF_READY)
+        if (isInSequenceFocus && checkMeridianFlipRunning())
         {
             qCDebug(KSTARS_EKOS_CAPTURE) << "Resetting HFR value to file value of" << fileHFR << "pixels after meridian flip.";
             //firstAutoFocus = true;
@@ -3603,6 +3619,7 @@ void Capture::setMeridianFlipStage(MFStage stage)
 
             case MF_COMPLETED:
                 secondsLabel->setText(i18n("Flip complete."));
+                meridianFlipStage = MF_COMPLETED;
                 break;
 
             default:
@@ -5337,31 +5354,6 @@ void Capture::openCalibrationDialog()
     }
 }
 
-IPState Capture::checkLightFrameAuxiliaryTasks()
-{
-    // step 2: check if meridian flip already is ongoing
-    if (meridianFlipStage != MF_NONE && meridianFlipStage != MF_READY)
-        return IPS_BUSY;
-    // step 3: check if meridian flip is required
-    if (checkMeridianFlip())
-        return IPS_BUSY;
-    // step 4: check if re-focusing is required
-    if (m_State == CAPTURE_FOCUSING || startFocusIfRequired())
-    {
-        m_State = CAPTURE_FOCUSING;
-        return IPS_BUSY;
-    }
-
-    if (guideState == GUIDE_SUSPENDED)
-    {
-        appendLogText(i18n("Autoguiding resumed."));
-        emit resumeGuiding();
-    }
-
-    calibrationStage = CAL_PRECAPTURE_COMPLETE;
-
-    return IPS_OK;
-}
 
 IPState Capture::checkLightFramePendingTasks()
 {
@@ -5461,7 +5453,7 @@ IPState Capture::checkLightFramePendingTasks()
             break;
     }
 
-    return checkLightFrameAuxiliaryTasks();
+    return startNextExposure();
 }
 
 IPState Capture::checkDarkFramePendingTasks()

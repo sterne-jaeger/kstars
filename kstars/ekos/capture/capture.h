@@ -682,8 +682,6 @@ class Capture : public QWidget, public Ui::Capture
 
         // Frame Type calibration checks
         IPState checkLightFramePendingTasks();
-        IPState checkLightFrameAuxiliaryTasks();
-
         IPState checkFlatFramePendingTasks();
         IPState checkDarkFramePendingTasks();
 
@@ -773,6 +771,13 @@ class Capture : public QWidget, public Ui::Capture
         /* Meridian Flip */
         bool checkMeridianFlip();
         void checkGuidingAfterFlip();
+        /**
+         * @brief Check if a meridian flip has already been started
+         * @return true iff the scope has started the meridian flip
+         */
+        inline bool checkMeridianFlipRunning() {
+            return meridianFlipStage != MF_NONE  && meridianFlipStage != MF_REQUESTED &&
+                   meridianFlipStage != MF_READY && meridianFlipStage != MF_COMPLETED;}
 
         // check if a pause has been planned
         bool checkPausing();
