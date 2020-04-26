@@ -1750,6 +1750,39 @@ void Capture::processJobCompletion()
     }
 }
 
+bool Capture::checkDithering()
+{
+    if ( (Options::ditherEnabled() || Options::ditherNoGuiding())
+            // 2017-09-20 Jasem: No need to dither after post meridian flip guiding
+            && meridianFlipStage != MF_GUIDING
+            // If CCD is looping, we cannot dither UNLESS a different camera and NOT a guide chip is doing the guiding for us.
+            && (currentCCD->isLooping() == false || guideChip == nullptr)
+            // We must be either in guide mode or if non-guide dither (via pulsing) is enabled
+            && (guideState == GUIDE_GUIDING || Options::ditherNoGuiding())
+            // Must be only done for light frames
+            && activeJob->getFrameType() == FRAME_LIGHT
+            // Check dither counter
+            && --ditherCounter == 0)
+    {
+        ditherCounter = Options::ditherFrames();
+
+        secondsLabel->setText(i18n("Dithering..."));
+
+        qCInfo(KSTARS_EKOS_CAPTURE) << "Dithering...";
+        appendLogText(i18n("Dithering..."));
+
+        if (currentCCD->isLooping())
+            targetChip->abortExposure();
+
+        m_State = CAPTURE_DITHERING;
+        emit newStatus(Ekos::CAPTURE_DITHERING);
+
+        return true;
+    }
+    // no dithering required
+    return false;
+}
+
 IPState Capture::resumeSequence()
 {
     if (m_State == CAPTURE_PAUSED)
@@ -1818,30 +1851,8 @@ IPState Capture::resumeSequence()
         }
 
         // Dither either when guiding or IF Non-Guide either option is enabled
-        if ( (Options::ditherEnabled() || Options::ditherNoGuiding())
-                // 2017-09-20 Jasem: No need to dither after post meridian flip guiding
-                && meridianFlipStage != MF_GUIDING
-                // If CCD is looping, we cannot dither UNLESS a different camera and NOT a guide chip is doing the guiding for us.
-                && (currentCCD->isLooping() == false || guideChip == nullptr)
-                // We must be either in guide mode or if non-guide dither (via pulsing) is enabled
-                && (guideState == GUIDE_GUIDING || Options::ditherNoGuiding())
-                // Must be only done for light frames
-                && activeJob->getFrameType() == FRAME_LIGHT
-                // Check dither counter
-                && --ditherCounter == 0)
-        {
-            ditherCounter = Options::ditherFrames();
+        checkDithering();
 
-            secondsLabel->setText(i18n("Dithering..."));
-
-            qCInfo(KSTARS_EKOS_CAPTURE) << "Dithering...";
-
-            if (currentCCD->isLooping())
-                targetChip->abortExposure();
-
-            m_State = CAPTURE_DITHERING;
-            emit newStatus(Ekos::CAPTURE_DITHERING);
-        }
 #if 0
         else if (isRefocus && activeJob->getFrameType() == FRAME_LIGHT)
         {
@@ -1902,7 +1913,7 @@ IPState Capture::resumeSequence()
         }
 #endif
         // Check if we need to do autofocus, if not let's check if we need looping or start next exposure
-        else if (startFocusIfRequired() == false)
+        if (startFocusIfRequired() == false)
         {
             // If looping, we just increment the file system image count
             if (currentCCD->isLooping())
@@ -5000,6 +5011,7 @@ void Capture::setGuideStatus(GuideState state)
         case GUIDE_DITHERING_SUCCESS:
             qCInfo(KSTARS_EKOS_CAPTURE) << "Dithering succeeded, capture state" << getCaptureStatusString(m_State);
             // do nothing if something happened during dithering
+            appendLogText(i18n("Dithering succeeded."));
             if (m_State != CAPTURE_DITHERING)
                 break;
 

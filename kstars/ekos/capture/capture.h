@@ -631,7 +631,7 @@ class Capture : public QWidget, public Ui::Capture
         // Meridian flip
         void meridianFlipStatusChanged(Mount::MeridianFlipStatus status);
 
-    private slots:
+private slots:
 
         /**
              * @brief setDirty Set dirty bit to indicate sequence queue file was modified and needs saving.
@@ -780,6 +780,12 @@ class Capture : public QWidget, public Ui::Capture
 
         // check if a pause has been planned
         bool checkPausing();
+
+        /**
+         * @brief Check whether dithering is necessary and trigger it if required.
+         * @return true iff dithering has been triggered
+         */
+        bool checkDithering();
 
         // Remaining Time in seconds
         int getJobRemainingTime(SequenceJob *job);
