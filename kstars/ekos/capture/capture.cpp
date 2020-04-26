@@ -725,7 +725,7 @@ void Capture::stop(CaptureState targetState)
         currentLightBox->SetLightEnabled(false);
     }
 
-    if (meridianFlipStage == MF_NONE)
+    if (meridianFlipStage == MF_NONE || meridianFlipStage >= MF_COMPLETED)
         secondsLabel->clear();
     disconnect(currentCCD, &ISD::CCD::BLOBUpdated, this, &Ekos::Capture::newFITS);
     disconnect(currentCCD, &ISD::CCD::newExposureValue, this,  &Ekos::Capture::setExposureProgress);
@@ -763,7 +763,7 @@ void Capture::stop(CaptureState targetState)
 
     activeJob = nullptr;
     // meridian flip may take place if requested
-    setMeridianFlipStage(MF_READY);
+    setMeridianFlipStage(MF_NONE);
 }
 
 void Capture::sendNewImage(const QString &filename, ISD::CCDChip * myChip)
@@ -4819,7 +4819,12 @@ void Capture::processFlipCompleted()
 
     // resume only if capturing was running
     if (m_State == CAPTURE_IDLE || m_State == CAPTURE_ABORTED || m_State == CAPTURE_COMPLETE || m_State == CAPTURE_PAUSED)
+    {
+        // reset the meridian flip stage and jump directly MF_NONE, since no
+        // restart of guiding etc. necessary
+        setMeridianFlipStage(MF_NONE);
         return;
+    }
 
     if (resumeAlignmentAfterFlip == true)
     {
@@ -4980,15 +4985,6 @@ void Capture::setGuideStatus(GuideState state)
     switch (state)
     {
         case GUIDE_IDLE:
-        case GUIDE_ABORTED:
-            // If Autoguiding was started before and now stopped, let's abort (unless we're doing a meridian flip)
-            if (isGuidingActive() && meridianFlipStage == MF_NONE &&
-                    ((activeJob && activeJob->getStatus() == SequenceJob::JOB_BUSY) ||
-                     this->m_State == CAPTURE_SUSPENDED || this->m_State == CAPTURE_PAUSED))
-            {
-                appendLogText(i18n("Autoguiding stopped. Aborting..."));
-                abort();
-            }
             break;
 
         case GUIDE_GUIDING:
@@ -4996,22 +4992,9 @@ void Capture::setGuideStatus(GuideState state)
             autoGuideReady = true;
             break;
 
+        case GUIDE_ABORTED:
         case GUIDE_CALIBRATION_ERROR:
-            // TODO try restarting calibration a couple of times before giving up
-            if (meridianFlipStage == MF_GUIDING)
-            {
-                if (++retries == 3)
-                {
-                    appendLogText(i18n("Post meridian flip calibration error. Aborting..."));
-                    abort();
-                }
-                else
-                {
-                    appendLogText(i18n("Post meridian flip calibration error. Restarting..."));
-                    checkGuidingAfterFlip();
-                }
-            }
-            autoGuideReady = false;
+            processGuidingFailed();
             break;
 
         case GUIDE_DITHERING_SUCCESS:
@@ -5057,6 +5040,33 @@ void Capture::setGuideStatus(GuideState state)
     }
 
     guideState = state;
+}
+
+
+void Capture::processGuidingFailed()
+{
+    // If Autoguiding was started before and now stopped, let's abort (unless we're doing a meridian flip)
+    if (isGuidingActive() && meridianFlipStage == MF_NONE &&
+            ((activeJob && activeJob->getStatus() == SequenceJob::JOB_BUSY) ||
+             this->m_State == CAPTURE_SUSPENDED || this->m_State == CAPTURE_PAUSED))
+    {
+        appendLogText(i18n("Autoguiding stopped. Aborting..."));
+        abort();
+    }
+    else if (meridianFlipStage == MF_GUIDING)
+    {
+        if (++retries == 3)
+        {
+            appendLogText(i18n("Post meridian flip calibration error. Aborting..."));
+            abort();
+        }
+        else
+        {
+            appendLogText(i18n("Post meridian flip calibration error. Restarting..."));
+            checkGuidingAfterFlip();
+        }
+    }
+    autoGuideReady = false;
 }
 
 void Capture::checkFrameType(int index)

@@ -776,8 +776,7 @@ class Capture : public QWidget, public Ui::Capture
          * @return true iff the scope has started the meridian flip
          */
         inline bool checkMeridianFlipRunning() {
-            return meridianFlipStage != MF_NONE  && meridianFlipStage != MF_REQUESTED &&
-                   meridianFlipStage != MF_READY && meridianFlipStage != MF_COMPLETED;}
+            return meridianFlipStage == MF_INITIATED || meridianFlipStage == MF_FLIPPING || meridianFlipStage == MF_SLEWING;}
 
         // check if a pause has been planned
         bool checkPausing();
@@ -976,5 +975,6 @@ class Capture : public QWidget, public Ui::Capture
         QList<double> downloadTimes;
         QTime downloadTimer;
         QTimer downloadProgressTimer;
+        void processGuidingFailed();
 };
 }
