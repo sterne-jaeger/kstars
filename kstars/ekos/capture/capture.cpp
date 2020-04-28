@@ -1464,6 +1464,10 @@ IPState Capture::startNextExposure()
         return IPS_BUSY;
     }
 
+    // step 5: check if dithering is required
+    if (m_State == CAPTURE_DITHERING || checkDithering())
+        return IPS_BUSY;
+
     if (guideState == GUIDE_SUSPENDED)
     {
         appendLogText(i18n("Autoguiding resumed."));
@@ -1785,14 +1789,6 @@ bool Capture::checkDithering()
 
 IPState Capture::resumeSequence()
 {
-    if (m_State == CAPTURE_PAUSED)
-    {
-        pauseFunction = &Capture::resumeSequence;
-        appendLogText(i18n("Sequence paused."));
-        secondsLabel->setText(i18n("Paused..."));
-        return IPS_BUSY;
-    }
-
     // If no job is active, we have to find if there are more pending jobs in the queue
     if (!activeJob)
     {
@@ -1849,9 +1845,6 @@ IPState Capture::resumeSequence()
             qCInfo(KSTARS_EKOS_CAPTURE) << "Resuming guiding...";
             emit resumeGuiding();
         }
-
-        // Dither either when guiding or IF Non-Guide either option is enabled
-        checkDithering();
 
 #if 0
         else if (isRefocus && activeJob->getFrameType() == FRAME_LIGHT)
