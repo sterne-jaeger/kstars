@@ -1401,6 +1401,7 @@ void Mount::meridianFlipStatusChangedInternal(Mount::MeridianFlipStatus status)
 
         case FLIP_WAITING:
             meridianFlipStatusText->setText("Meridian flip waiting...");
+            appendLogText(i18n("Meridian flip waiting."));
             break;
 
         case FLIP_ACCEPTED:
@@ -1412,10 +1413,12 @@ void Mount::meridianFlipStatusChangedInternal(Mount::MeridianFlipStatus status)
 
         case FLIP_RUNNING:
             meridianFlipStatusText->setText("Meridian flip running...");
+            appendLogText(i18n("Meridian flip started."));
             break;
 
         case FLIP_COMPLETED:
             meridianFlipStatusText->setText("Meridian flip completed.");
+            appendLogText(i18n("Meridian flip completed."));
             break;
 
         default:
