@@ -680,8 +680,21 @@ private slots:
         bool processPostCaptureCalibrationStage();
         void updatePreCaptureCalibrationStatus();
 
-        // Frame Type calibration checks
+        /* Frame Type calibration checks */
+
+        /**
+         * @brief Check if some tasks are pending before the active job
+         *        can start light frame capturing
+         * @return IPS_OK iff the light frame capturing sequence is ready to start
+         */
         IPState checkLightFramePendingTasks();
+
+        /**
+         * @brief Check whether the scope cover is removed (manual cover, flat covers, dark covers etc.)
+         * @return true iff scope cover is open
+         */
+        IPState checkLightFrameScopeCoverOpen();
+
         IPState checkFlatFramePendingTasks();
         IPState checkDarkFramePendingTasks();
 
@@ -769,14 +782,20 @@ private slots:
         bool isModelinDSLRInfo(const QString &model);
 
         /* Meridian Flip */
-        bool checkMeridianFlip();
-        void checkGuidingAfterFlip();
         /**
          * @brief Check if a meridian flip has already been started
          * @return true iff the scope has started the meridian flip
          */
         inline bool checkMeridianFlipRunning() {
             return meridianFlipStage == MF_INITIATED || meridianFlipStage == MF_FLIPPING || meridianFlipStage == MF_SLEWING;}
+
+        /**
+         * @brief Check whether a meridian flip has been requested and trigger it
+         * @return true iff a meridian flip has been triggered
+         */
+        bool checkMeridianFlipReady();
+
+        void checkGuidingAfterFlip();
 
         // check if a pause has been planned
         bool checkPausing();

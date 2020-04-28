@@ -763,7 +763,7 @@ void Capture::stop(CaptureState targetState)
 
     activeJob = nullptr;
     // meridian flip may take place if requested
-    setMeridianFlipStage(MF_NONE);
+    setMeridianFlipStage(MF_READY);
 }
 
 void Capture::sendNewImage(const QString &filename, ISD::CCDChip * myChip)
@@ -1440,48 +1440,18 @@ void Capture::syncFilterInfo()
 
 IPState Capture::startNextExposure()
 {
-    // step 1: check if pausing has been requested
-    if (checkPausing() == true)
-    {
-        pauseFunction = &Capture::startNextExposure;
-        return IPS_BUSY;
-    }
+    IPState pending = checkLightFramePendingTasks();
+    if (pending != IPS_OK)
+        // there are still some jobs pending
+        return pending;
 
-    // step 2: check if meridian flip already is already running
-    if (checkMeridianFlipRunning())
-        return IPS_BUSY;
-
-    // step 3: check if meridian flip is required
-    if (checkMeridianFlip())
-        // execute flip before next capture
-        return IPS_BUSY;
-
-    // step 4: check if re-focusing is required
-    if (m_State == CAPTURE_FOCUSING || startFocusIfRequired())
-    {
-        // re-focus before next capture
-        m_State = CAPTURE_FOCUSING;
-        return IPS_BUSY;
-    }
-
-    // step 5: check if dithering is required
-    if (m_State == CAPTURE_DITHERING || checkDithering())
-        return IPS_BUSY;
-
-    if (guideState == GUIDE_SUSPENDED)
-    {
-        appendLogText(i18n("Autoguiding resumed."));
-        emit resumeGuiding();
-    }
-
-    calibrationStage = CAL_PRECAPTURE_COMPLETE;
+    // nothing pending, let's start the next exposure
     if (seqDelay > 0)
     {
         secondsLabel->setText(i18n("Waiting..."));
         m_State = CAPTURE_WAITING;
         emit newStatus(Ekos::CAPTURE_WAITING);
     }
-
     seqTimer->start(seqDelay);
 
     return IPS_OK;
@@ -3372,7 +3342,7 @@ void Capture::setGuideDeviation(double delta_ra, double delta_dec)
             m_SpikeDetected     = false;
 
             // Check if we need to start meridian flip
-            if (checkMeridianFlip())
+            if (checkMeridianFlipReady())
                 return;
 
             m_DeviationDetected = true;
@@ -3601,6 +3571,14 @@ void Capture::setMeridianFlipStage(MFStage stage)
                     secondsLabel->setText(i18n("Paused..."));
                     meridianFlipStage = stage;
                     emit newMeridianFlipStatus(Mount::FLIP_ACCEPTED);
+                }
+                else if (!checkMeridianFlipRunning())
+                {
+                    // if beither a MF has been requested (checked above) or is in a post
+                    // MF calibration phase, no MF needs to take place.
+                    // Hence we set to the stage to NONE
+                    meridianFlipStage = MF_NONE;
+                    break;
                 }
                 // in any other case, ignore it
                 break;
@@ -4890,7 +4868,7 @@ bool Capture::checkPausing()
 }
 
 
-bool Capture::checkMeridianFlip()
+bool Capture::checkMeridianFlipReady()
 {
     if (currentTelescope == nullptr)
         return false;
@@ -5372,6 +5350,58 @@ void Capture::openCalibrationDialog()
 
 IPState Capture::checkLightFramePendingTasks()
 {
+    // step 1: ensure that the scope cover is open and wait until it's open
+    IPState coverState = checkLightFrameScopeCoverOpen();
+    if (coverState != IPS_OK)
+        return coverState;
+
+    // step 2: check if pausing has been requested
+    if (checkPausing() == true)
+    {
+        pauseFunction = &Capture::startNextExposure;
+        return IPS_BUSY;
+    }
+
+    // step 3: check if meridian flip already is already running
+    if (checkMeridianFlipRunning())
+        return IPS_BUSY;
+
+    // step 4: check if meridian flip is required
+    if (checkMeridianFlipReady())
+        // execute flip before next capture
+        return IPS_BUSY;
+
+    // step 5: check if re-focusing is required
+    if (m_State == CAPTURE_FOCUSING || startFocusIfRequired())
+    {
+        // re-focus before next capture
+        m_State = CAPTURE_FOCUSING;
+        return IPS_BUSY;
+    }
+
+    // step 6: check if dithering is required
+    if (m_State == CAPTURE_DITHERING || checkDithering())
+        return IPS_BUSY;
+
+    // step 7: resume guiding if it was suspended
+    if (guideState == GUIDE_SUSPENDED)
+    {
+        appendLogText(i18n("Autoguiding resumed."));
+        emit resumeGuiding();
+        // No need to return IPS_BUSY here, we can continue immediately.
+        // In the case that the capturing sequence has a guiding limit,
+        // capturing will be interrupted by setGuideDeviation().
+    }
+
+    // everything is ready for capturing light frames
+    calibrationStage = CAL_PRECAPTURE_COMPLETE;
+
+    return IPS_OK;
+
+}
+
+IPState Capture::checkLightFrameScopeCoverOpen()
+{
     switch (activeJob->getFlatFieldSource())
     {
         // All these are considered MANUAL when it comes to light frames
@@ -5467,9 +5497,11 @@ IPState Capture::checkLightFramePendingTasks()
             }
             break;
     }
-
-    return startNextExposure();
+    // scope cover open (or no scope cover)
+    return IPS_OK;
 }
+
+
 
 IPState Capture::checkDarkFramePendingTasks()
 {
@@ -6186,7 +6218,7 @@ void Capture::postScriptFinished(int exitCode, QProcess::ExitStatus status)
         processJobCompletion();
     }
     // Else check if meridian condition is met.
-    else if (checkMeridianFlip())
+    else if (checkMeridianFlipReady())
     {
         appendLogText(i18n("Processing meridian flip..."));
     }
