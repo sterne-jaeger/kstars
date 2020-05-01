@@ -1817,65 +1817,6 @@ IPState Capture::resumeSequence()
             emit resumeGuiding();
         }
 
-#if 0
-        else if (isRefocus && activeJob->getFrameType() == FRAME_LIGHT)
-        {
-            appendLogText(i18n("Scheduled refocus starting after %1 seconds...", getRefocusEveryNTimerElapsedSec()));
-
-            secondsLabel->setText(i18n("Focusing..."));
-
-            if (currentCCD->isLooping())
-                targetChip->abortExposure();
-
-            // If we are over 30 mins since last autofocus, we'll reset frame.
-            if (refocusEveryN->value() >= 30)
-                emit resetFocus();
-
-            // force refocus
-            qCDebug(KSTARS_EKOS_CAPTURE) << "Capture is triggering autofocus on line 1812.";
-            emit checkFocus(0.1);
-
-            m_State = CAPTURE_FOCUSING;
-            emit newStatus(Ekos::CAPTURE_FOCUSING);
-        }
-        else if (isInSequenceFocus && activeJob->getFrameType() == FRAME_LIGHT && --inSequenceFocusCounter == 0)
-        {
-            inSequenceFocusCounter = Options::inSequenceCheckFrames();
-
-            // Post meridian flip we need to reset filter _before_ running in-sequence focusing
-            // as it could have changed for whatever reason (e.g. alignment used a different filter).
-            // Then when focus process begins with the _target_ filter in place, it should take all the necessary actions to make it
-            // work for the next set of captures. This is direct reset to the filter device, not via Filter Manager.
-            if (meridianFlipStage != MF_NONE && currentFilter)
-            {
-                int targetFilterPosition = activeJob->getTargetFilter();
-                int currentFilterPosition = filterManager->getFilterPosition();
-                if (targetFilterPosition > 0 && targetFilterPosition != currentFilterPosition)
-                    currentFilter->runCommand(INDI_SET_FILTER, &targetFilterPosition);
-            }
-
-            secondsLabel->setText(i18n("Focusing..."));
-
-            if (currentCCD->isLooping())
-                targetChip->abortExposure();
-
-            if (HFRPixels->value() == 0)
-            {
-                qCDebug(KSTARS_EKOS_CAPTURE) << "Capture is triggering autofocus on line 1841.";
-                emit checkFocus(0.1);
-            }
-            else
-            {
-                qCDebug(KSTARS_EKOS_CAPTURE) << "Capture is triggering autofocus on line 1846.";
-                emit checkFocus(HFRPixels->value());
-            }
-
-            qCDebug(KSTARS_EKOS_CAPTURE) << "In-sequence focusing started...";
-
-            m_State = CAPTURE_FOCUSING;
-            emit newStatus(Ekos::CAPTURE_FOCUSING);
-        }
-#endif
         // If looping, we just increment the file system image count
         if (currentCCD->isLooping())
         {
@@ -2200,42 +2141,6 @@ IPState Capture::resumeCapture()
         secondsLabel->setText(i18n("Paused..."));
         return IPS_OK;
     }
-
-#if 0
-    /* Refresh isRefocus when resuming */
-    if (autoFocusReady && refocusEveryNCheck->isChecked())
-    {
-        qCDebug(KSTARS_EKOS_CAPTURE) << "NFocus Elapsed Time (secs): " << getRefocusEveryNTimerElapsedSec() <<
-                                     " Requested Interval (secs): " << refocusEveryN->value() * 60;
-        isRefocus = getRefocusEveryNTimerElapsedSec() >= refocusEveryN->value() * 60;
-    }
-
-    // FIXME ought to be able to combine these - only different is value passed
-    //       to checkFocus()
-    // 2018-08-23 Jasem: For now in-sequence-focusing takes precedence.
-    if (isInSequenceFocus && requiredAutoFocusStarted == false)
-    {
-        requiredAutoFocusStarted = true;
-        secondsLabel->setText(i18n("Focusing..."));
-        qCDebug(KSTARS_EKOS_CAPTURE) << "Requesting focusing if HFR >" << HFRPixels->value();
-        qCDebug(KSTARS_EKOS_CAPTURE) << "Capture is triggering autofocus on line 2186.";
-        emit checkFocus(HFRPixels->value());
-        m_State = CAPTURE_FOCUSING;
-        emit newStatus(Ekos::CAPTURE_FOCUSING);
-        return true;
-    }
-    else if (isRefocus)
-    {
-        appendLogText(i18n("Scheduled refocus started..."));
-
-        secondsLabel->setText(i18n("Focusing..."));
-        qCDebug(KSTARS_EKOS_CAPTURE) << "Capture is triggering autofocus on line 2197.";
-        emit checkFocus(0.1);
-        m_State = CAPTURE_FOCUSING;
-        emit newStatus(Ekos::CAPTURE_FOCUSING);
-        return true;
-    }
-#endif
 
     if (m_State == CAPTURE_DITHERING && m_AutoFocusReady && startFocusIfRequired())
         return IPS_OK;
@@ -3077,65 +2982,6 @@ void Capture::prepareActiveJob()
      * But in the end, it's not entirely clear what the intent was. Note there is still a warning that a preliminary autofocus
      * procedure is important to avoid any surprise that could make the whole schedule ineffective.
      */
-#if 0
-    // If we haven't performed a single autofocus yet, we stop
-    //if (!job->isPreview() && Options::enforceRefocusEveryN() && autoFocusReady && isInSequenceFocus == false && firstAutoFocus == true)
-    if (!job->isPreview() && Options::enforceRefocusEveryN() && autoFocusReady == false && isInSequenceFocus == false)
-    {
-        appendLogText(i18n("Manual scheduled focusing is not supported. Run Autofocus process before trying again."));
-        abort();
-        return;
-    }
-#endif
-
-#if 0
-    if (currentFilterPosition > 0)
-    {
-        // If we haven't performed a single autofocus yet, we stop
-        if (!job->isPreview() && Options::autoFocusOnFilterChange() && (isInSequenceFocus == false && firstAutoFocus == true))
-        {
-            appendLogText(i18n(
-                              "Manual focusing post filter change is not supported. Run Autofocus process before trying again."));
-            abort();
-            return;
-        }
-
-        /*
-        if (currentFilterPosition != activeJob->getTargetFilter() && filterFocusOffsets.empty() == false)
-        {
-            int16_t targetFilterOffset = 0;
-            foreach (FocusOffset *offset, filterFocusOffsets)
-            {
-                if (offset->filter == activeJob->getFilterName())
-                {
-                    targetFilterOffset = offset->offset - lastFilterOffset;
-                    lastFilterOffset   = offset->offset;
-                    break;
-                }
-            }
-
-            if (targetFilterOffset != 0 &&
-                (activeJob->getFrameType() == FRAME_LIGHT || activeJob->getFrameType() == FRAME_FLAT))
-            {
-                appendLogText(i18n("Adjust focus offset by %1 steps", targetFilterOffset));
-                secondsLabel->setText(i18n("Adjusting filter offset"));
-
-                if (activeJob->isPreview() == false)
-                {
-                    state = CAPTURE_FILTER_FOCUS;
-                    emit newStatus(Ekos::CAPTURE_FILTER_FOCUS);
-                }
-
-                setBusy(true);
-
-                emit newFocusOffset(targetFilterOffset);
-
-                return;
-            }
-        }
-        */
-    }
-#endif
 
     preparePreCaptureActions();
 }
@@ -3430,38 +3276,9 @@ void Capture::setFocusStatus(FocusState state)
             HFRPixels->setValue(median + (median * (Options::hFRThresholdPercentage() / 100.0)));
         }
 
-#if 0
-        if (focusHFR > 0 && firstAutoFocus && HFRPixels->value() == 0 && fileHFR == 0)
-        {
-            firstAutoFocus = false;
-            // Add 2.5% (default) to the automatic initial HFR value to allow for minute changes in HFR without need to refocus
-            // in case in-sequence-focusing is used.
-            HFRPixels->setValue(focusHFR + (focusHFR * (Options::hFRThresholdPercentage() / 100.0)));
-        }
-#endif
-
         // successful focus so reset elapsed time
         restartRefocusEveryNTimer();
     }
-
-#if 0
-    if (activeJob &&
-            (activeJob->getStatus() == SequenceJob::JOB_ABORTED || activeJob->getStatus() == SequenceJob::JOB_IDLE))
-    {
-        if (focusState == FOCUS_COMPLETE)
-        {
-            //HFRPixels->setValue(focusHFR + (focusHFR * 0.025));
-            appendLogText(i18n("Focus complete."));
-        }
-        else if (focusState == FOCUS_FAILED)
-        {
-            appendLogText(i18n("Autofocus failed. Aborting exposure..."));
-            secondsLabel->setText("");
-            abort();
-        }
-        return;
-    }
-#endif
 
     if ((isRefocus || isInSequenceFocus) && activeJob && activeJob->getStatus() == SequenceJob::JOB_BUSY)
     {
