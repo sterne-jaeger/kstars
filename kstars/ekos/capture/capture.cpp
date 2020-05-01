@@ -1641,6 +1641,9 @@ IPState Capture::setCaptureComplete()
         inSequenceFocusCounter--;
     }
 
+    /* Decrease the dithering counter */
+    ditherCounter--;
+
     // Do not send new image if the image was stored on the server.
     if (currentCCD->getUploadMode() != ISD::CCD::UPLOAD_LOCAL)
         sendNewImage(blobFilename, blobChip);
@@ -1736,7 +1739,7 @@ bool Capture::checkDithering()
             // Must be only done for light frames
             && activeJob->getFrameType() == FRAME_LIGHT
             // Check dither counter
-            && --ditherCounter == 0)
+            && ditherCounter <= 0)
     {
         ditherCounter = Options::ditherFrames();
 
@@ -1749,6 +1752,7 @@ bool Capture::checkDithering()
             targetChip->abortExposure();
 
         m_State = CAPTURE_DITHERING;
+        ditheringState = IPS_BUSY;
         emit newStatus(Ekos::CAPTURE_DITHERING);
 
         return true;
@@ -1888,7 +1892,12 @@ IPState Capture::resumeSequence()
                 }
             }
             else
-                startNextExposure();
+            {
+                IPState started = startNextExposure();
+                // if starting the next exposure did not succeed due to pending jobs, we retry after 1 second
+                if (started != IPS_OK)
+                    QTimer::singleShot(1000, this, &Ekos::Capture::resumeSequence);
+            }
         }
     }
 
@@ -4989,13 +4998,13 @@ void Capture::setGuideStatus(GuideState state)
             if (Options::guidingSettle() > 0)
             {
                 // N.B. Do NOT convert to i18np since guidingRate is DOUBLE value (e.g. 1.36) so we always use plural with that.
-                appendLogText(i18n("Dither complete. Resuming capture in %1 seconds...", Options::guidingSettle()));
-                QTimer::singleShot(Options::guidingSettle() * 1000, this, &Ekos::Capture::resumeCapture);
+                appendLogText(i18n("Dither complete. Resuming in %1 seconds...", Options::guidingSettle()));
+                QTimer::singleShot(Options::guidingSettle() * 1000, this, [this]() {ditheringState = IPS_OK;});
             }
             else
             {
                 appendLogText(i18n("Dither complete."));
-                resumeCapture();
+                ditheringState = IPS_OK;
             }
             break;
 
@@ -5007,13 +5016,15 @@ void Capture::setGuideStatus(GuideState state)
             if (Options::guidingSettle() > 0)
             {
                 // N.B. Do NOT convert to i18np since guidingRate is DOUBLE value (e.g. 1.36) so we always use plural with that.
-                appendLogText(i18n("Warning: Dithering failed. Resuming capture in %1 seconds...", Options::guidingSettle()));
-                QTimer::singleShot(Options::guidingSettle() * 1000, this, &Ekos::Capture::resumeCapture);
+                appendLogText(i18n("Warning: Dithering failed. Resuming in %1 seconds...", Options::guidingSettle()));
+                // set dithering state to OK after settling time and signal to proceed
+                QTimer::singleShot(Options::guidingSettle() * 1000, this, [this]() {ditheringState = IPS_OK;});
             }
             else
             {
                 appendLogText(i18n("Warning: Dithering failed."));
-                resumeCapture();
+                // signal OK so that capturing may continue although dithering failed
+                ditheringState = IPS_OK;
             }
 
             break;
@@ -5371,7 +5382,16 @@ IPState Capture::checkLightFramePendingTasks()
         // execute flip before next capture
         return IPS_BUSY;
 
-    // step 5: check if re-focusing is required
+    // step 5: check if post flip alignment is running
+    if (m_State == CAPTURE_ALIGNING)
+        return IPS_BUSY;
+
+    // step 6: check if post flip guiding is running
+    // MF_NONE is set as soon as guiding is running and the guide deviation is below the limit
+    if (m_State == CAPTURE_CALIBRATING && meridianFlipStage != MF_NONE)
+        return IPS_BUSY;
+
+    // step 7: check if re-focusing is required
     if (m_State == CAPTURE_FOCUSING || startFocusIfRequired())
     {
         // re-focus before next capture
@@ -5379,11 +5399,11 @@ IPState Capture::checkLightFramePendingTasks()
         return IPS_BUSY;
     }
 
-    // step 6: check if dithering is required
-    if (m_State == CAPTURE_DITHERING || checkDithering())
+    // step 8: check if dithering is required or running
+    if ((m_State == CAPTURE_DITHERING && ditheringState != IPS_OK) || checkDithering())
         return IPS_BUSY;
 
-    // step 7: resume guiding if it was suspended
+    // step 9: resume guiding if it was suspended
     if (guideState == GUIDE_SUSPENDED)
     {
         appendLogText(i18n("Autoguiding resumed."));

@@ -956,6 +956,7 @@ private slots:
         CaptureState m_State { CAPTURE_IDLE };
         FocusState focusState { FOCUS_IDLE };
         GuideState guideState { GUIDE_IDLE };
+        IPState ditheringState {IPS_IDLE};
         AlignState alignState { ALIGN_IDLE };
         FilterState filterManagerState { FILTER_IDLE };
 
