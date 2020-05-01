@@ -3313,7 +3313,6 @@ void Capture::setGuideDeviation(double delta_ra, double delta_dec)
         if (guideDeviationCheck->isChecked() == false || deviation_rms < guideDeviation->value())
         {
             appendLogText(i18n("Post meridian flip calibration completed successfully."));
-            resumeSequence();
             // N.B. Set meridian flip stage AFTER resumeSequence() always
             setMeridianFlipStage(MF_NONE);
             return;
@@ -4808,7 +4807,6 @@ void Capture::processFlipCompleted()
                           KSNotification::EVENT_INFO);
 
 
-    // resume only if capturing was running
     if (m_State == CAPTURE_IDLE || m_State == CAPTURE_ABORTED || m_State == CAPTURE_COMPLETE || m_State == CAPTURE_PAUSED)
     {
         // reset the meridian flip stage and jump directly MF_NONE, since no
@@ -4816,8 +4814,45 @@ void Capture::processFlipCompleted()
         setMeridianFlipStage(MF_NONE);
         return;
     }
+}
 
-    if (resumeAlignmentAfterFlip == true)
+bool Capture::checkGuidingAfterFlip()
+{
+    // if no meridian flip has completed, we do not touch guiding
+    if (meridianFlipStage < MF_COMPLETED)
+        return false;
+    // If we're not autoguiding then we're done
+    if (resumeGuidingAfterFlip == false)
+       return false;
+    // if we are waiting for a calibration, start it
+    if (m_State < CAPTURE_CALIBRATING)
+    {
+        appendLogText(i18n("Performing post flip re-calibration and guiding..."));
+        secondsLabel->setText(i18n("Calibrating..."));
+
+        m_State = CAPTURE_CALIBRATING;
+        emit newStatus(Ekos::CAPTURE_CALIBRATING);
+
+        setMeridianFlipStage(MF_GUIDING);
+        emit meridianFlipCompleted();
+        return true;
+    }
+    else
+        // in all other cases, do not touch
+        return false;
+}
+
+bool Capture::checkAlignmentAfterFlip()
+{
+    // if no meridian flip has completed, we do not touch guiding
+    if (meridianFlipStage < MF_COMPLETED)
+        return false;
+    // If we do not need to align then we're done
+    if (resumeAlignmentAfterFlip == false)
+       return false;
+
+    // if we are waiting for a calibration, start it
+    if (m_State < CAPTURE_ALIGNING)
     {
         appendLogText(i18n("Performing post flip re-alignment..."));
         secondsLabel->setText(i18n("Aligning..."));
@@ -4829,35 +4864,13 @@ void Capture::processFlipCompleted()
         setMeridianFlipStage(MF_ALIGNING);
         //QTimer::singleShot(Options::settlingTime(), [this]() {emit meridialFlipTracked();});
         //emit meridialFlipTracked();
-        return;
-    }
-
-    retries = 0;
-    checkGuidingAfterFlip();
-
-}
-
-void Capture::checkGuidingAfterFlip()
-{
-    // If we're not autoguiding then we're done
-    if (resumeGuidingAfterFlip == false)
-    {
-        resumeSequence();
-        // N.B. Set meridian flip stage AFTER resumeSequence() always
-        setMeridianFlipStage(MF_NONE);
+        return true;
     }
     else
-    {
-        appendLogText(i18n("Performing post flip re-calibration and guiding..."));
-        secondsLabel->setText(i18n("Calibrating..."));
-
-        m_State = CAPTURE_CALIBRATING;
-        emit newStatus(Ekos::CAPTURE_CALIBRATING);
-
-        setMeridianFlipStage(MF_GUIDING);
-        emit meridianFlipCompleted();
-    }
+        // in all other cases, do not touch
+        return false;
 }
+
 
 bool Capture::checkPausing()
 {
@@ -5383,12 +5396,12 @@ IPState Capture::checkLightFramePendingTasks()
         return IPS_BUSY;
 
     // step 5: check if post flip alignment is running
-    if (m_State == CAPTURE_ALIGNING)
+    if (m_State == CAPTURE_ALIGNING || checkAlignmentAfterFlip())
         return IPS_BUSY;
 
     // step 6: check if post flip guiding is running
     // MF_NONE is set as soon as guiding is running and the guide deviation is below the limit
-    if (m_State == CAPTURE_CALIBRATING && meridianFlipStage != MF_NONE)
+    if ((m_State == CAPTURE_CALIBRATING && meridianFlipStage != MF_NONE) || checkGuidingAfterFlip())
         return IPS_BUSY;
 
     // step 7: check if re-focusing is required

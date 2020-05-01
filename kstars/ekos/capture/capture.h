@@ -795,7 +795,8 @@ private slots:
          */
         bool checkMeridianFlipReady();
 
-        void checkGuidingAfterFlip();
+        bool checkGuidingAfterFlip();
+        bool checkAlignmentAfterFlip();
 
         // check if a pause has been planned
         bool checkPausing();
