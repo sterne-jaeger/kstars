@@ -3291,7 +3291,7 @@ void Capture::setFocusStatus(FocusState state)
                 secondsLabel->setText(i18n("Focus complete."));
                 m_State = CAPTURE_PROGRESS;
             }
-            else if (focusState == FOCUS_FAILED)
+            else if (focusState == FOCUS_FAILED || focusState == FOCUS_ABORTED)
             {
                 appendLogText(i18n("Autofocus failed."));
                 secondsLabel->setText(i18n("Autofocus failed."));
@@ -3303,7 +3303,7 @@ void Capture::setFocusStatus(FocusState state)
             appendLogText(i18n("Focus complete."));
             secondsLabel->setText(i18n("Focus complete."));
         }
-        else if (focusState == FOCUS_FAILED)
+        else if (focusState == FOCUS_FAILED || focusState == FOCUS_ABORTED)
         {
             appendLogText(i18n("Autofocus failed. Aborting exposure..."));
             secondsLabel->setText(i18n("Autofocus failed."));
