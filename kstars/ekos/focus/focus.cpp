@@ -941,6 +941,7 @@ void Focus::capture()
     }
 
     captureInProgress = true;
+    emit newStatus(FOCUS_PROGRESS);
 
     focusView->setBaseSize(focusingWidget->size());
 

@@ -1800,9 +1800,6 @@ IPState Capture::resumeSequence()
     // Otherwise, let's prepare for next exposure after making sure in-sequence focus and dithering are complete if applicable.
     else
     {
-        isInSequenceFocus = (m_AutoFocusReady && autofocusCheck->isChecked()/* && HFRPixels->value() > 0*/);
-        //        if (isInSequenceFocus)
-        //            requiredAutoFocusStarted = false;
         isTemperatureDeltaCheckActive = (m_AutoFocusReady && temperatureDeltaCheck->isChecked());
 
         // Reset HFR pixels to file value after meridian flip
@@ -1879,25 +1876,21 @@ IPState Capture::resumeSequence()
             emit newStatus(Ekos::CAPTURE_FOCUSING);
         }
 #endif
-        // Check if we need to do autofocus, if not let's check if we need looping or start next exposure
-        if (startFocusIfRequired() == false)
+        // If looping, we just increment the file system image count
+        if (currentCCD->isLooping())
         {
-            // If looping, we just increment the file system image count
-            if (currentCCD->isLooping())
+            if (currentCCD->getUploadMode() != ISD::CCD::UPLOAD_LOCAL)
             {
-                if (currentCCD->getUploadMode() != ISD::CCD::UPLOAD_LOCAL)
-                {
-                    checkSeqBoundary(activeJob->getSignature());
-                    currentCCD->setNextSequenceID(nextSequenceID);
-                }
+                checkSeqBoundary(activeJob->getSignature());
+                currentCCD->setNextSequenceID(nextSequenceID);
             }
-            else
-            {
-                IPState started = startNextExposure();
-                // if starting the next exposure did not succeed due to pending jobs, we retry after 1 second
-                if (started != IPS_OK)
-                    QTimer::singleShot(1000, this, &Ekos::Capture::resumeSequence);
-            }
+        }
+        else
+        {
+            IPState started = startNextExposure();
+            // if starting the next exposure did not succeed due to pending jobs, we retry after 1 second
+            if (started != IPS_OK)
+                QTimer::singleShot(1000, this, &Ekos::Capture::resumeSequence);
         }
     }
 
@@ -1909,7 +1902,7 @@ bool Capture::startFocusIfRequired()
     if (activeJob == nullptr || activeJob->getFrameType() != FRAME_LIGHT)
         return false;
 
-    isRefocus = false;
+    isInSequenceFocus = (m_AutoFocusReady && autofocusCheck->isChecked());
 
     // check if time for forced refocus
     if (refocusEveryNCheck->isChecked())
@@ -1950,6 +1943,7 @@ bool Capture::startFocusIfRequired()
 
         // force refocus
         qCDebug(KSTARS_EKOS_CAPTURE) << "Capture is triggering autofocus on line " << __LINE__;
+        setFocusStatus(FOCUS_PROGRESS);
         emit checkFocus(0.1);
 
         m_State = CAPTURE_FOCUSING;
@@ -1977,19 +1971,10 @@ bool Capture::startFocusIfRequired()
         if (currentCCD->isLooping())
             targetChip->abortExposure();
 
-        if (HFRPixels->value() == 0.0)
-        {
-            qCDebug(KSTARS_EKOS_CAPTURE) << "Capture is triggering autofocus on line " << __LINE__;
-            emit checkFocus(0.1);
-        }
-        else
-        {
-            qCDebug(KSTARS_EKOS_CAPTURE) << "Capture is triggering autofocus on line " << __LINE__;
-            emit checkFocus(HFRPixels->value());
-        }
+        setFocusStatus(FOCUS_PROGRESS);
+        emit checkFocus(HFRPixels->value() == 0.0 ? 0.1: HFRPixels->value());
 
         qCDebug(KSTARS_EKOS_CAPTURE) << "In-sequence focusing started...";
-
         m_State = CAPTURE_FOCUSING;
         emit newStatus(Ekos::CAPTURE_FOCUSING);
         return true;
@@ -3500,7 +3485,6 @@ void Capture::setFocusStatus(FocusState state)
         {
             appendLogText(i18n("Focus complete."));
             secondsLabel->setText(i18n("Focus complete."));
-            startNextExposure();
         }
         else if (focusState == FOCUS_FAILED)
         {
@@ -5405,12 +5389,8 @@ IPState Capture::checkLightFramePendingTasks()
         return IPS_BUSY;
 
     // step 7: check if re-focusing is required
-    if (m_State == CAPTURE_FOCUSING || startFocusIfRequired())
-    {
-        // re-focus before next capture
-        m_State = CAPTURE_FOCUSING;
+    if ((m_State == CAPTURE_FOCUSING  && focusState != FOCUS_COMPLETE) || startFocusIfRequired())
         return IPS_BUSY;
-    }
 
     // step 8: check if dithering is required or running
     if ((m_State == CAPTURE_DITHERING && ditheringState != IPS_OK) || checkDithering())
