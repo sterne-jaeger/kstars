@@ -1601,6 +1601,7 @@ IPState Capture::setCaptureComplete()
 
 
     secondsLabel->setText(i18n("Complete."));
+    setBusy(false);
 
     // Do not display notifications for very short captures
     if (activeJob->getExposure() >= 1)
@@ -1797,18 +1798,10 @@ IPState Capture::resumeSequence()
             return IPS_BUSY;
         }
     }
-    // Otherwise, let's prepare for next exposure after making sure in-sequence focus and dithering are complete if applicable.
+    // Otherwise, let's prepare for next exposure.
     else
     {
         isTemperatureDeltaCheckActive = (m_AutoFocusReady && temperatureDeltaCheck->isChecked());
-
-        // Reset HFR pixels to file value after meridian flip
-        if (isInSequenceFocus && checkMeridianFlipRunning())
-        {
-            qCDebug(KSTARS_EKOS_CAPTURE) << "Resetting HFR value to file value of" << fileHFR << "pixels after meridian flip.";
-            //firstAutoFocus = true;
-            HFRPixels->setValue(fileHFR);
-        }
 
         // If we suspended guiding due to primary chip download, resume guide chip guiding now
         if (guideState == GUIDE_SUSPENDED && suspendGuideOnDownload)
@@ -1829,8 +1822,9 @@ IPState Capture::resumeSequence()
         else
         {
             IPState started = startNextExposure();
-            // if starting the next exposure did not succeed due to pending jobs, we retry after 1 second
-            if (started != IPS_OK)
+            // if starting the next exposure did not succeed due to pending jobs running,
+            // we retry after 1 second
+            if (started == IPS_BUSY)
                 QTimer::singleShot(1000, this, &Ekos::Capture::resumeSequence);
         }
     }
@@ -3133,6 +3127,9 @@ void Capture::setGuideDeviation(double delta_ra, double delta_dec)
     //        if (activeJob == nullptr)
     //            return;
     //    }
+    // if guiding deviations occur and no job is active, check if a meridian flip is ready to be executed
+    if (activeJob == nullptr && checkMeridianFlipReady())
+        return;
 
     // If guiding is started after a meridian flip we will start getting guide deviations again
     // if the guide deviations are within our limits, we resume the sequence
@@ -3411,6 +3408,19 @@ void Capture::setMeridianFlipStage(MFStage stage)
             case MF_COMPLETED:
                 secondsLabel->setText(i18n("Flip complete."));
                 meridianFlipStage = MF_COMPLETED;
+
+                // Reset HFR pixels to file value after meridian flip
+                if (isInSequenceFocus)
+                {
+                    qCDebug(KSTARS_EKOS_CAPTURE) << "Resetting HFR value to file value of" << fileHFR << "pixels after meridian flip.";
+                    //firstAutoFocus = true;
+                    HFRPixels->setValue(fileHFR);
+                }
+
+                // after a meridian flip we do not need to dither
+                if ( Options::ditherEnabled() || Options::ditherNoGuiding())
+                     ditherCounter = Options::ditherFrames();
+
                 break;
 
             default:
@@ -4625,6 +4635,7 @@ bool Capture::checkGuidingAfterFlip()
     // If we're not autoguiding then we're done
     if (resumeGuidingAfterFlip == false)
        return false;
+
     // if we are waiting for a calibration, start it
     if (m_State < CAPTURE_CALIBRATING)
     {
@@ -4635,6 +4646,13 @@ bool Capture::checkGuidingAfterFlip()
         emit newStatus(Ekos::CAPTURE_CALIBRATING);
 
         setMeridianFlipStage(MF_GUIDING);
+        emit meridianFlipCompleted();
+        return true;
+    }
+    else if (m_State == CAPTURE_CALIBRATING && (guideState == GUIDE_CALIBRATION_ERROR || guideState == GUIDE_ABORTED))
+    {
+        // restart guiding after failure
+        appendLogText(i18n("Post meridian flip calibration error. Restarting..."));
         emit meridianFlipCompleted();
         return true;
     }
@@ -4799,6 +4817,7 @@ void Capture::setGuideStatus(GuideState state)
 
         case GUIDE_ABORTED:
         case GUIDE_CALIBRATION_ERROR:
+            guideState = state;
             processGuidingFailed();
             break;
 
@@ -4863,15 +4882,10 @@ void Capture::processGuidingFailed()
     }
     else if (meridianFlipStage == MF_GUIDING)
     {
-        if (++retries == 3)
+        if (++retries >= 3)
         {
             appendLogText(i18n("Post meridian flip calibration error. Aborting..."));
             abort();
-        }
-        else
-        {
-            appendLogText(i18n("Post meridian flip calibration error. Restarting..."));
-            checkGuidingAfterFlip();
         }
     }
     autoGuideReady = false;
@@ -5175,6 +5189,10 @@ void Capture::openCalibrationDialog()
 
 IPState Capture::checkLightFramePendingTasks()
 {
+    // step 0: did one of the pending jobs fail or has the user aborted the capture?
+    if (m_State == CAPTURE_ABORTED)
+        return IPS_ALERT;
+
     // step 1: ensure that the scope cover is open and wait until it's open
     IPState coverState = checkLightFrameScopeCoverOpen();
     if (coverState != IPS_OK)
@@ -5202,7 +5220,7 @@ IPState Capture::checkLightFramePendingTasks()
 
     // step 6: check if post flip guiding is running
     // MF_NONE is set as soon as guiding is running and the guide deviation is below the limit
-    if ((m_State == CAPTURE_CALIBRATING && meridianFlipStage != MF_NONE) || checkGuidingAfterFlip())
+    if (checkGuidingAfterFlip())
         return IPS_BUSY;
 
     // step 7: check if re-focusing is required
