@@ -757,6 +757,12 @@ private slots:
         void setBusy(bool enable);
         IPState resumeSequence();
         IPState startNextExposure();
+
+        /**
+         * @brief Loop retrying #startNextExposure() if there are pending preparation tasks.
+         */
+        void checkNextExposure();
+
         // reset = 0 --> Do not reset
         // reset = 1 --> Full reset
         // reset = 2 --> Only update limits if needed

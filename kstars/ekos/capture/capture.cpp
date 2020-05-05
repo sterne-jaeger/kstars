@@ -1457,6 +1457,16 @@ IPState Capture::startNextExposure()
     return IPS_OK;
 }
 
+void Capture::checkNextExposure()
+{
+    IPState started = startNextExposure();
+    // if starting the next exposure did not succeed due to pending jobs running,
+    // we retry after 1 second
+    if (started == IPS_BUSY)
+        QTimer::singleShot(1000, this, &Ekos::Capture::checkNextExposure);
+}
+
+
 void Capture::newFITS(IBLOB * bp)
 {
     ISD::CCDChip * tChip = nullptr;
@@ -1601,8 +1611,6 @@ IPState Capture::setCaptureComplete()
 
 
     secondsLabel->setText(i18n("Complete."));
-    setBusy(false);
-
     // Do not display notifications for very short captures
     if (activeJob->getExposure() >= 1)
         KSNotification::event(QLatin1String("EkosCaptureImageReceived"), i18n("Captured image received"),
@@ -1819,18 +1827,15 @@ IPState Capture::resumeSequence()
                 currentCCD->setNextSequenceID(nextSequenceID);
             }
         }
+        // otherwise we loop starting the next exposure until all pending
+        // jobs are completed
         else
-        {
-            IPState started = startNextExposure();
-            // if starting the next exposure did not succeed due to pending jobs running,
-            // we retry after 1 second
-            if (started == IPS_BUSY)
-                QTimer::singleShot(1000, this, &Ekos::Capture::resumeSequence);
-        }
+            checkNextExposure();
     }
 
     return IPS_OK;
 }
+
 
 bool Capture::startFocusIfRequired()
 {
