@@ -4822,8 +4822,8 @@ void Capture::setGuideStatus(GuideState state)
 
         case GUIDE_ABORTED:
         case GUIDE_CALIBRATION_ERROR:
-            guideState = state;
             processGuidingFailed();
+            guideState = state;
             break;
 
         case GUIDE_DITHERING_SUCCESS:
