@@ -1842,6 +1842,7 @@ bool Capture::startFocusIfRequired()
     if (activeJob == nullptr || activeJob->getFrameType() != FRAME_LIGHT)
         return false;
 
+    isRefocus = false;
     isInSequenceFocus = (m_AutoFocusReady && autofocusCheck->isChecked());
 
     // check if time for forced refocus
